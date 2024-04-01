@@ -32,6 +32,7 @@ v = 20 #ship speed (m/s)
 ########## CONSTANTS ###############
 
 G = 9.81 #acceleration due to gravity (m/s^2)
+rho  = 997 #density of fluid (water in this case) kg / m^3
 ########## FRICTIONAL RESISTANCE (R_F) CALCS ###############
 
 
@@ -133,7 +134,30 @@ else:
 
 m2 = c15 * cP ** 2 * math.exp(-0.1 * Fn ** -2)
 
-rW = c1 * c2 * c5 * delta_pg * math.exp(m1 * Fn ** d + m2 * math.cos(lamdba_w * Fn ** -2))
+rW = c1 * c2 * c5 * nabla * rho * G * math.exp(m1 * Fn ** d + m2 * math.cos(lamdba_w * Fn ** -2))
+
+########## BULBOUS BOW RESISTANCE (R_B) CALCS ###############
+
+#measure of emergence of the bow
+p_B = 0.56 * math.sqrt(aBT) / (TF - 1.5 * hB)
+
+#Froude Number based on immersion of the bow
+Fni = v / math.sqrt(G * (TF - hB - 0.25 * math.sqrt(aBT)) + 0.15 * v ** 2)
+
+#0 if no bulbous bow 
+rB = 0.11 * math.exp(-3 * p_B ** -2) * Fni ** 3 * aBT ** 1.5 * rho * G / (1 + Fni ** 2)
+
+########## TRANSOM STERN RESISTANCE (R_TR) CALCS ###############
+
+FnT = 
+
+#Froude Number based on transom immersion
+if FnT < 5:
+    c6 = 0.2 * (1 - 0.2 FnT)
+else:
+    c6 = 0
+
+rTR = 0.5 * rho * v ** 2 * aT * c6
 
 rTotal = cF * (formFactor) + rAPP + rW + rB + rTR + Ra
 
