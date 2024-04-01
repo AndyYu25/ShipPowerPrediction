@@ -4,21 +4,19 @@ import math
 ####### INPUT VALUES ############
 #user inputs values
 
-length = 100 #length at waterline in meters
-beam = 10 #ship beam in 
-speed = 10 # in m/s
-displacement = 10000 # in kg
-T = 10 #average moulded draught/draft (meters)
+length = 241.55 #length at waterline in meters
+beam = 10 #ship beam in meters
+displacement = 51760000 # in kg
+T = 9.33 #average moulded draught/draft (meters)
 
-KV = 1.1092 #kinematic viscoscity (mm^2/s). Default value of 1.1092 for water at 16 celsius
 lcb = 0 #longitudinal center of bouynacy (% of ship's length in front of amidships [0.5 L]). Default is 0, or perfectly amidships
 
-cM = 0.95 #midship section coefficient (midship section area / beam * draft). Merchant ships are 0.9, Bismarck was 0.97, high speed destroyer should have 0.8. Default to 0.95
+cM = 0.97 #midship section coefficient (midship section area / beam * draft). Merchant ships are 0.9, Bismarck was 0.97, high speed destroyer should have 0.8. Default to 0.95
 cB = 0.55 # block coefficient. Generally between 0.45 and 0.65. Generally, larger warships have a higher block coefficient while smaller warships have a lower block coefficient. Default of 0.55
 
 #water plane coefficient (waterplane area / beam * length). cWP of 1 is a rectangle. Larger ships have a slightly lower cWP than smaller ones.
 #Farraguts were 0.744, destroyers were 0.68, Bismarck was 0.66. Default of 0.7
-cWP = 0.7
+cWP = 0.66
 
 aBT = 0 #cross-sectional area of bulbous bow (m^2). 0 for non bulbous bow (default) (m^2)
 hB = 4 #height of the center of the bulbous bow above keel line (m). default of 4, not used if aBT = 0
@@ -26,13 +24,15 @@ hB = 4 #height of the center of the bulbous bow above keel line (m). default of 
 aT = 0 # immersed area of the transverse area of the transom at zero speed. (m^2)
 #defaults to 0 for no transom stern
 
-v = 20 #ship speed (m/s)
+v = 15.438478 #ship speed (m/s)
 
 
 ########## CONSTANTS ###############
 
 G = 9.81 #acceleration due to gravity (m/s^2)
 rho  = 997 #density of fluid (water in this case) kg / m^3
+KV = 1.1092 #kinematic viscoscity (mm^2/s). Default value of 1.1092 for water at 16 celsius
+
 ########## FRICTIONAL RESISTANCE (R_F) CALCS ###############
 
 
@@ -40,7 +40,7 @@ vDisplacement = 0.001 * displacement #volume of displacement calculated from mas
 cCrossSection = 0.9 #cross-section coefficient. 1 is a rectangle, 0.5 is a triangle. 0.9 default assuming u-shaped hull
 cP = vDisplacement / (cCrossSection * beam * T * length) #prismatic coefficient calculation
 
-reynolds = length * KV * speed
+reynolds = length * KV * v
 cF = 0.075 / (math.log10(reynolds) - 2) ** 2 #cF is coefficient of friction
 
 def c12(T, length):
@@ -66,7 +66,7 @@ formFactor = c13 * (0.93 + c12(T, length) * (beam / lR) ** 0.92497 * (0.95 * cP)
 #wetted area of the hull
 S = length * (2 * T * beam) * math.sqrt(cM) * (0.453 + 0.4425 * cB - 0.2862 * cM - 0.003467 * beam / T + 0.3696 * cWP) + 2.38 * aBT / cB
 
-flowAppendage = 3 #weighted average. See (Holthrop and Mennen 167) for a more accurate calculation
+flowAppendage = 3 #weighted average approximation. See (Holthrop and Mennen 167) for a more accurate calculation
 
 #resistance from appendages. 1 is the water density
 rAPP = 0.5 * 1 * (v ** 2) * S * flowAppendage * cF
@@ -149,17 +149,31 @@ rB = 0.11 * math.exp(-3 * p_B ** -2) * Fni ** 3 * aBT ** 1.5 * rho * G / (1 + Fn
 
 ########## TRANSOM STERN RESISTANCE (R_TR) CALCS ###############
 
-FnT = 
-
 #Froude Number based on transom immersion
+FnT = v / math.sqrt(2 * G * aT / (beam + beam * cWP))
+
 if FnT < 5:
-    c6 = 0.2 * (1 - 0.2 FnT)
+    c6 = 0.2 * (1 - 0.2 * FnT)
 else:
     c6 = 0
 
 rTR = 0.5 * rho * v ** 2 * aT * c6
 
-rTotal = cF * (formFactor) + rAPP + rW + rB + rTR + Ra
+########## MODEL-SHIP CORRELATION RESISTANCE (R_A) CALCS ###############
+
+#c4 factors in the tramsom stern
+if TF / length <= 0.04:
+    c4 = TF / length
+else:
+    c4 = 0.04
+
+#correlation allowance coefficient
+cA = 0.006 * (length + 100) ** -0.16 - 0.00205 + 0.003 * math.sqrt(length / 7.5) * cB ** 4 * c2 * (0.04 - c4)
+
+rA = 0.5 * rho * v **2 * S * cA
+
+
+rTotal = cF * (formFactor) + rAPP + rW + rB + rTR + rA
 
 
 
