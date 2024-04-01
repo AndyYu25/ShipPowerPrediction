@@ -6,13 +6,12 @@ import math
 
 length = 205 #length at waterline in meters
 beam = 32 #ship beam in meters / moulded breadth
-displacement = 51760000 # in kg
 T = 10 #average moulded draught/draft (meters)
 
 lcb = -0.75 #longitudinal center of bouynacy (% of ship's length in front of amidships [0.5 L]). Default is 0, or perfectly amidships
 
 cM = 0.98 #midship section coefficient (midship section area / beam * draft). Merchant ships are 0.9, Bismarck was 0.97, high speed destroyer should have 0.8. Default to 0.95
-cB = 0.5717 # block coefficient. Generally between 0.45 and 0.65. Generally, larger warships have a higher block coefficient while smaller warships have a lower block coefficient. Default of 0.55
+cB = 0.5716 # block coefficient. Generally between 0.45 and 0.65. Generally, larger warships have a higher block coefficient while smaller warships have a lower block coefficient. Default of 0.55
 
 sAPP = 50 #wetted area appendage. Appendages are any underwater structures protruding from the hull, like the rudder and propellors. Put 0 if unsure.
 
@@ -28,15 +27,20 @@ aT = 16 # immersed area of the transverse area of the transom at zero speed. (m^
 
 v = 12.8611 #ship speed (m/s)
 
+numPropellers = 1 #number of propellers 
+dProp = 8 # propeller diameter (meters)
+numBlades = 4 #number of blades on each propeller
 
+propKeelClearance = 0.2 #how many meters between the tip of a propellor at its lowest and the keel line
 ########## CONSTANTS ###############
 
 G = 9.81 #acceleration due to gravity (m/s^2)
-rho  = 997 #density of fluid (water in this case) kg / m^3
+rho  = 1025  #density of fluid (salt water in this case) kg / m^3
 KV = 11.8987e-7 #kinematic viscoscity (m^2/s). Default value of 1.1092 for water at 16 celsius
 
 ########## FRICTIONAL RESISTANCE (R_F) CALCS ###############
 
+displacement = length * beam * T * cB
 
 cCrossSection = 0.9 #cross-section coefficient. 1 is a rectangle, 0.5 is a triangle. 0.9 default assuming u-shaped hull
 cP = cB / cM #prismatic coefficient calculation
@@ -79,7 +83,6 @@ flowAppendage = 1.5 #weighted average approximation. See (Holthrop and Mennen 16
 #resistance from appendages. 1 is the water density
 rAPP = 0.5 * rho * (v ** 2) * sAPP * flowAppendage * cF
 
-print(rAPP)
 ########## Wave RESISTANCE (R_W) CALCS ###############
 
 if (beam / length) < 0.11:
@@ -191,17 +194,86 @@ cA = 0.006 * (length + 100) ** -0.16 - 0.00205 + 0.003 * math.sqrt(length / 7.5)
 
 rA = 0.5 * rho * v **2 * S * cA
 
+########## TOTAL RESISTANCE CALCS ###############
+
+
 #total resistance (newtons)
 #faulty formula + assumptions: disregard resistance from appendages
 #rTotal = cF * (formFactor) + rAPP + rW + rB + rTR + rA
 rTotal = rF * (formFactor) + rAPP + rW + rB + rTR + rA
 
-#total resistance deviates 4% from provided example (underestimation of resistance)
+#total resistance deviates 4% from Holthrop + Mennen's example (underestimation of resistance)
 print(rTotal)
 
-requiredPower = rTotal * v
+#power = force * velocity
+#this is the external power applied to the ship as a whole, NOT the shaft power, which is the power applied to the shafts
+P_E = rTotal * v
 
-print(requiredPower)
+#power deviates ~2% from Holthrop + Mennen's example (underestimation)
+print(P_E)
+
+
+########## BLADE AREA RATIO (A_E/A_O) CALCS ###############
+
+
+#K is a constant based on number of propellers. Only determined for single or double screw ships; unreliable for more screws
+if numPropellers == 1:
+    K = 0.1
+else:
+    K = 0.2
+
+#depth of the shaft centerline, calculated as prop radius + prop keel clearance minus draught (at the stern)
+hShaft = 0.5 * dProp + propKeelClearance - T
+
+#original equation: bladeAreaRatio = K + (1.3 + 0.3 * Z) * T / (dProp ** 2 * (p_o + rho * G * h - p_v))
+#modified to replace p_o - p_v with 99047 N/m^2, which hold trues for seawater at 15 degrees celsius
+bladeAreaRatio = K + (1.3 + 0.3 * numBlades) * T / (dProp ** 2 * (99047 + rho * G * hShaft))
+
+########## VISCIOUS COEFFICIENT CALCS (C_V) ###############
+
+cV = formFactor * cF + cA
+
+
+########## PROPELLER-VARIABLE CALCS (w, t, eta_R) ###############
+#any calculations that differ depending on the number of propellors for a ship. 
+#Holtrop & Mennen only account for 1 or 2 propellers, 
+#so anything after that is assumed to have similar efficiency to a twin-screw arrangement
+
+if length / beam > 5.2:
+    c10 = beam / length
+else:
+    c10 = 0.25 - 0.003328402 * (beam / length - 0.134615385)
+
+cP1 = 1.45 * cP - 0.315 - 0.0225 * lcb
+
+if numPropellers == 1:
+    #assume conventional stern (not an open stern)
+    #not using revised method
+    w = c9 * cV * length / T * (0.0661875 + 1.21756 * c11 * cV / (1 - cP1))
+    + 0.24558 * math.sqrt(beam / (length * (1 - cP1))) - 0.09726 * (0.95 - cP)
+    + 0.11434 / (0.95 - cB) + 0.75 * cStern * cV + 0.002 * cStern
+    t = 0.001979 * length / (beam - beam * cP1) + 1.0585 * c10 
+    - 0.00524 - 0.0148 * dProp ** 2 / (beam * T) + 0.0015 * cStern
+    eta_R = 0.9922 - 0.05908 * bladeAreaRatio + 0.07424 * (cP - 0.0225 * lcb)
+else: #2 propellers (extrapolated to 2+ propellers)
+    w = 0.3095 * cB + 10 * cV * cB - 0.23 * dProp / math.sqrt(beam * T)
+    eta_R = 0.9737 + 0.111 * (cP - 0.0225 * lcb) + 0.06325 * P_E / dProp
+
+
+########## TOTAL SHAFT POWER CALCS ###############
+
+
+#chord length
+c_075 = 2.073 * (bladeAreaRatio) * dProp * numBlades
+
+#thickness-chord length ratio
+tc_075 = (0.0185 - 0.00125 * numBlades) / c_075
+
+
+eta_S = 0.99 #coefficient ideal conditions (completely calm water, 15 degrees saltwater, clean hull + propeller)
+
+
+shaftPower = P_E / (eta_R * eta_o * eta_S * (1 - t)/(1 - w))
 
 #sources: overall calculation (Holthrop and Mennen): https://repository.tudelft.nl/islandora/object/uuid:ee370fed-4b4f-4a70-af77-e14c3e692fd4/datastream/OBJ/download
 #coefficient of friction + reynolds number calculation: https://repository.tudelft.nl/islandora/object/uuid%3A16d77473-7043-4099-a8c6-bf58f555e2e7
