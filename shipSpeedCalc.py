@@ -4,34 +4,34 @@ import math
 ####### INPUT VALUES ############
 #user inputs values
 
-length = 205 #length at waterline in meters
-beam = 32 #ship beam in meters / moulded breadth
-T = 10 #average moulded draught/draft (meters)
+length = 241.55 #length at waterline in meters
+beam = 36 #ship beam in meters / moulded breadth
+T = 10.55 #average moulded draught/draft (meters)
 
-lcb = -0.75 #longitudinal center of bouynacy (% of ship's length in front of amidships [0.5 L]). Default is 0, or perfectly amidships
+lcb = 0 #longitudinal center of bouynacy (% of ship's length in front of amidships [0.5 L]). Default is 0, or perfectly amidships
 
-cM = 0.98 #midship section coefficient (midship section area / beam * draft). Merchant ships are 0.9, Bismarck was 0.97, high speed destroyer should have 0.8. Default to 0.95
-cB = 0.5716 # block coefficient. Generally between 0.45 and 0.65. Generally, larger warships have a higher block coefficient while smaller warships have a lower block coefficient. Default of 0.55
+cM = 0.97 #midship section coefficient (midship section area / beam * draft). Merchant ships are 0.9, Bismarck was 0.97, high speed destroyer should have 0.8. Default to 0.95
+cB = 0.55 # block coefficient. Generally between 0.45 and 0.65. Generally, larger warships have a higher block coefficient while smaller warships have a lower block coefficient. Default of 0.55
 
-sAPP = 50 #wetted area appendage. Appendages are any underwater structures protruding from the hull, like the rudder and propellors. Put 0 if unsure.
+sAPP = 0 #wetted area appendage. Appendages are any underwater structures protruding from the hull, like the rudder and propellors. Put 0 if unsure.
 
 #water plane coefficient (waterplane area / beam * length). cWP of 1 is a rectangle. Larger ships have a slightly lower cWP than smaller ones.
 #Farraguts were 0.744, destroyers were 0.68, Bismarck was 0.66. Default of 0.7
-cWP = 0.75
+cWP = 0.66
 
-aBT = 20 #cross-sectional area of bulbous bow (m^2). 0 for non bulbous bow (default) (m^2)
+aBT = 0 #cross-sectional area of bulbous bow (m^2). 0 for non bulbous bow (default) (m^2)
 hB = 4 #height of the center of the bulbous bow above keel line (m). default of 4, not used if aBT = 0
 
-aT = 16 # immersed area of the transverse area of the transom at zero speed. (m^2)
+aT = 0 # immersed area of the transverse area of the transom at zero speed. (m^2)
 #defaults to 0 for no transom stern
 
-v = 12.8611 #ship speed (m/s)
+v = 15.4333 #ship speed (m/s)
 
-numPropellers = 1 #number of propellers 
-dProp = 8 # propeller diameter (meters)
-numBlades = 4 #number of blades on each propeller
+numPropellers = 3 #number of propellers 
+dProp = 4.7 # propeller diameter (meters)
+numBlades = 3 #number of blades on each propeller
 
-n = 1.6594 #shaft speed (rotations per second [s^-1]
+n = 4.416 #shaft speed (rotations per second [s^-1]
 #the Hood was 210 (3.5 s^-1), Bismarck was 265 rpm (4.416 s^-1), USS Massachussets was 185 rpm (3.083 rps)
 
 propKeelClearance = 0.2 #how many meters between the tip of a propellor at its lowest and the keel line
@@ -207,14 +207,15 @@ rA = 0.5 * rho * v **2 * S * cA
 rTotal = rF * (formFactor) + rAPP + rW + rB + rTR + rA
 
 #total resistance deviates 4% from Holthrop + Mennen's example (underestimation of resistance)
-print(rTotal)
+print(f"Total Resistance (newtons): {rTotal}")
 
 #power = force * velocity
 #this is the external power applied to the ship as a whole, NOT the shaft power, which is the power applied to the shafts
+#effective power
 P_E = rTotal * v
 
 #power deviates ~2% from Holthrop + Mennen's example (underestimation)
-print(P_E)
+print(f"Effective Power (watts): {P_E}")
 
 
 ########## VISCIOUS COEFFICIENT CALCS (C_V) ###############
@@ -254,14 +255,25 @@ cP1 = 1.45 * cP - 0.315 - 0.0225 * lcb
 print(f"cP1: {cP1}")
 print(f"c11: {c11}")
 print(f"c9: {c9}")
+print(f"cV: {cV}")
+print(f"cStern: {cStern}")
+
+c20 = 1.0 + 0.015 * cStern
+
+if cP < 0.7:
+    c19 = 0.12997 / (0.95 - cB) - 0.11056 / (0.95 - cP)
+else:
+    c19 = 0.18567 / (1.3571 - cM) - 0.71276 + 0.38648 * cP
+
 
 
 if numPropellers == 1:
     #assume conventional stern (not an open stern)
     #not using revised method
-    w = c9 * cV * length / T * (0.0661875 + 1.21756 * c11 * cV / (1 - cP1))
-    + 0.24558 * math.sqrt(beam / (length * (1 - cP1))) - 0.09726 * (0.95 - cP)
-    + 0.11434 / (0.95 - cB) + 0.75 * cStern * cV + 0.002 * cStern
+
+    #use revision for calculating single screw conventional stern, Holtrop 1984
+    w = c9 * c20 * cV * (length / T) * (0.050776 + 0.93405 * c11 * (cV / (1 - cP1))) + (0.27915 * c20 * math.sqrt(beam / (length * (1 - cP1)))) + c19 * c20
+    #still use Holtrop 1978 calculation
     t = 0.001979 * length / (beam - beam * cP1) + 1.0585 * c10 
     - 0.00524 - 0.0148 * dProp ** 2 / (beam * T) + 0.0015 * cStern
 else: #2 propellers (extrapolated to 2+ propellers)
@@ -270,33 +282,42 @@ else: #2 propellers (extrapolated to 2+ propellers)
 
 
 
+
+
+
+
 ########## BLADE AREA RATIO (A_E/A_O) CALCS ###############
 
 
-#K is a constant based on number of propellers. Only determined for single or double screw ships; unreliable for more screws
+#K is a constant based on number of propellers. Only determined for single or double screw ships; unreliable for more than 2 screws
 if numPropellers == 1:
     K = 0.2
 else:
-    K = 0.05
+    K = 0.1
 
-#depth of the shaft centerline, calculated as prop radius + prop keel clearance minus draught (at the stern)
-hShaft = 0.5 * dProp + propKeelClearance - T
+#depth of the shaft centerline, calculated as draught minus prop radius + prop keel clearance (at the stern)
+#hShaft = 0.5 * dProp + propKeelClearance - T
+hShaft = T - (propKeelClearance + dProp / 2)
+
+#propeller pitch, or how far the propeller goes in one revolution
+#formula = velocity * wake field coefficient (to account for propeller slip) / rotational frequency
+pitch = v * (1 - w) / n
 
 #propeller thrust: the thrust generated by the propellers
-#set equal to frictional r
-propThrust = P_E / (v * (1 - w * t))
+#effective thrust = total resistance
+#effective thrust = prop thrust * thrust deduction coefficienct (1 - t)
+# prop thrust = total resistance / thrust deduction coefficient
+propThrust = rTotal / (1 - t)
+
 
 #original equation: bladeAreaRatio = K + (1.3 + 0.3 * Z) * thrust / (dProp ** 2 * (p_o + rho * G * h - p_v))
-#modified to replace p_o - p_v with 99047 N/m^2, which hold trues for seawater at 15 degrees celsius
+#modified to replace p_o - p_v with 99047 N/m^2, which holds true for seawater at 15 degrees celsius
 bladeAreaRatio = K + (1.3 + 0.3 * numBlades) * propThrust / (dProp ** 2 * (99047 + rho * G * hShaft))
 
 print(f"w: {w}")
 print(f"t: {t}")
 
 print(f"propThrust: {propThrust}")
-propThrust = 2172750
-hShaft = 0.2
-print(K + (1.3 + 0.3 * numBlades) * propThrust / (dProp ** 2 * (99047 + rho * G * hShaft)))
 
 
 #calculate eta_R here since it is dependent on A_E/A_O for the case of a single screw ship
@@ -315,15 +336,12 @@ c_075 = 2.073 * (bladeAreaRatio) * dProp / numBlades
 tc_075 = (0.0185 - 0.00125 * numBlades) / c_075
 
 
-#propeller pitch, or how far the propeller goes in one revolution
-#formula = velocity * wake field coefficient (to account for propeller slip) / rotational frequency
-pitch = v * (1 - w) / n
 
 #propeller roughness (for 1980s props, may be higher with fouled or older propellers, but assume 0.00003 for simplicity)
 k_p = 0.00003
 
 #difference in drag coefficients of the profile section
-delta_CD = (2 + 4 * tc_075) * (0.003605 - (1.89 + 1.62 * math.log(c_075 / k_p) ** -2.5))
+delta_CD = (2 + 4 * tc_075) * (0.003605 - (1.89 + 1.62 * math.log(c_075 / k_p)) ** -2.5)
 
 print(f"bladeAreaRatio: {bladeAreaRatio}")
 print(f"c_075: {c_075}")
@@ -350,12 +368,15 @@ J = v * (1 - w * t) / (n ** 2 * dProp)
 #give up, can't figure way to derive torque
 #eta_o = J * K_T /(2 * math.pi * K_Q)
 
-print(K_T)
 #thrust coefficient
 cTH = (K_T / J ** 2) * 8 / math.pi
 
-#ideal propeller efficiency / ideal eta_o, is an overestimation of eta_o:
+#ideal propeller efficiency / ideal eta_o calculation, is a drastic overestimation of eta_o:
 eta_o = 2 / (1 + math.sqrt(1 + cTH))
+
+#multiply ideal propeller efficiency by 0.85 to reflect real life conditions
+#still results in optimistic measurements
+eta_o *= 0.85
 ########## TOTAL SHAFT POWER CALCS ###############
 
 
@@ -364,7 +385,6 @@ eta_S = 0.99 #coefficient ideal conditions (completely calm water, 15 degrees sa
 shaftPower = P_E / (eta_R * eta_o * eta_S * (1 - t)/(1 - w))
 
 print(shaftPower)
-
 #sources: overall calculation (Holthrop and Mennen): https://repository.tudelft.nl/islandora/object/uuid:ee370fed-4b4f-4a70-af77-e14c3e692fd4/datastream/OBJ/download
 #coefficient of friction + reynolds number calculation: https://repository.tudelft.nl/islandora/object/uuid%3A16d77473-7043-4099-a8c6-bf58f555e2e7
 #prismatic coefficient (cP): https://www.nautilusshipping.com/form-coefficient-of-ship
