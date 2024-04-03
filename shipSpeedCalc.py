@@ -6,7 +6,7 @@ import math
 
 length = 241.55 #length at waterline in meters
 beam = 36 #ship beam in meters / moulded breadth
-T = 10.55 #average moulded draught/draft (meters)
+T = 9.33 #average moulded draught/draft (meters)
 
 lcb = 0 #longitudinal center of bouynacy (% of ship's length in front of amidships [0.5 L]). Default is 0, or perfectly amidships
 
@@ -25,10 +25,10 @@ hB = 4 #height of the center of the bulbous bow above keel line (m). default of 
 aT = 0 # immersed area of the transverse area of the transom at zero speed. (m^2)
 #defaults to 0 for no transom stern
 
-v = 15.4333 #ship speed (m/s)
+v = 15.4395 #ship speed (m/s)
 
 numPropellers = 3 #number of propellers 
-dProp = 4.7 # propeller diameter (meters)
+dProp = 4.7  # propeller diameter (meters)
 numBlades = 3 #number of blades on each propeller
 
 n = 4.416 #shaft speed (rotations per second [s^-1]
@@ -64,7 +64,7 @@ def c12(T, length): #correct
     if 0.02 >= ldRatio:
         return 0.479948
 
-cStern = 10 # 10 for U-shaped section with hogner stern, 0 for normal section, -10 for v-shaped sections
+cStern = 0 # 10 for U-shaped section with hogner stern, 0 for normal section, -10 for v-shaped sections
 c13 = 1 + 0.003 * cStern
 
 lR = length * ( 1 - cP + 0.06 * cP * lcb / (4 * cP - 1) )
@@ -324,7 +324,7 @@ print(f"propThrust: {propThrust}")
 if numPropellers == 1:
     eta_R = 0.9922 - 0.05908 * bladeAreaRatio + 0.07424 * (cP - 0.0225 * lcb)
 else:
-    eta_R = 0.9737 + 0.111 * (cP - 0.0225 * lcb) + 0.06325 * P_E / dProp
+    eta_R = 0.9737 + 0.111 * (cP - 0.0225 * lcb) + 0.06325 * pitch / dProp
 
 
 ########## OPEN WATER PROPELLER EFFICIENCY CALCS (eta_o) ###############
@@ -363,20 +363,21 @@ K_T = K_T_B + delta_CD * 0.3 * (pitch * c_075 * numBlades) / dProp ** 2
 #K_Q = K_Q_B - delta_CD * 0.25 * (c_075 * numBlades) / dProp
 
 #advance ratio
-J = v * (1 - w * t) / (n ** 2 * dProp)
+J = v * (1 - w * t) / (n * dProp)
 
 #give up, can't figure way to derive torque
 #eta_o = J * K_T /(2 * math.pi * K_Q)
 
-#thrust coefficient
+#thrust coefficient (ITTC 1978)
 cTH = (K_T / J ** 2) * 8 / math.pi
+
 
 #ideal propeller efficiency / ideal eta_o calculation, is a drastic overestimation of eta_o:
 eta_o = 2 / (1 + math.sqrt(1 + cTH))
 
-#multiply ideal propeller efficiency by 0.85 to reflect real life conditions
+#multiply ideal propeller efficiency by 0.7 to reflect real life conditions
 #still results in optimistic measurements
-eta_o *= 0.85
+eta_o *= 0.7
 ########## TOTAL SHAFT POWER CALCS ###############
 
 
@@ -384,6 +385,8 @@ eta_S = 0.99 #coefficient ideal conditions (completely calm water, 15 degrees sa
 
 shaftPower = P_E / (eta_R * eta_o * eta_S * (1 - t)/(1 - w))
 
+print(S)
+print(eta_R, eta_o, eta_S, t, w)
 print(shaftPower)
 #sources: overall calculation (Holthrop and Mennen): https://repository.tudelft.nl/islandora/object/uuid:ee370fed-4b4f-4a70-af77-e14c3e692fd4/datastream/OBJ/download
 #coefficient of friction + reynolds number calculation: https://repository.tudelft.nl/islandora/object/uuid%3A16d77473-7043-4099-a8c6-bf58f555e2e7
