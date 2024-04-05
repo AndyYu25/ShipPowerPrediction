@@ -4,20 +4,22 @@ import math
 ####### INPUT VALUES ############
 #user inputs values
 
-length = 241.55 #length at waterline in meters
-beam = 36 #ship beam in meters / moulded breadth
-T = 9.33 #average moulded draught/draft (meters)
+length = 161.8 #length at waterline in meters
+beam = 24.5 #ship beam in meters / moulded breadth
+T = 8.84 #ship draught (meters) / moulded draught. Assumed to be uniform across the ship
+displacementMass = 15842 #ship displacement (metric tons)
 
 lcb = 0 #longitudinal center of bouynacy (% of ship's length in front of amidships [0.5 L]). Default is 0, or perfectly amidships
 
-cM = 0.97 #midship section coefficient (midship section area / beam * draft). Merchant ships are 0.9, Bismarck was 0.97, high speed destroyer should have 0.8. Default to 0.95
-cB = 0.55 # block coefficient. Generally between 0.45 and 0.65. Generally, larger warships have a higher block coefficient while smaller warships have a lower block coefficient. Default of 0.55
+cM = 0.95 #midship section coefficient (midship section area / beam * draft). Merchant ships are 0.9, Bismarck was 0.97, Tegethoff (1876) was 0.82, high speed destroyer should have 0.8. 
+#Default to 0.95
+#cB = 0.55 # block coefficient. Generally between 0.45 and 0.65. Generally, larger warships have a higher block coefficient while smaller warships have a lower block coefficient. Default of 0.55
 
 sAPP = 0 #wetted area appendage. Appendages are any underwater structures protruding from the hull, like the rudder and propellors. Put 0 if unsure.
 
 #water plane coefficient (waterplane area / beam * length). cWP of 1 is a rectangle. Larger ships have a slightly lower cWP than smaller ones.
-#Farraguts were 0.744, destroyers were 0.68, Bismarck was 0.66. Default of 0.7
-cWP = 0.66
+#Farraguts were 0.744, post-WWII destroyers were 0.68, Bismarck was 0.66. Default of 0.7
+cWP = 0.7
 
 aBT = 0 #cross-sectional area of bulbous bow (m^2). 0 for non bulbous bow (default) (m^2)
 hB = 4 #height of the center of the bulbous bow above keel line (m). default of 4, not used if aBT = 0
@@ -25,29 +27,37 @@ hB = 4 #height of the center of the bulbous bow above keel line (m). default of 
 aT = 0 # immersed area of the transverse area of the transom at zero speed. (m^2)
 #defaults to 0 for no transom stern
 
-v = 15.4395 #ship speed (m/s)
+v = 13.89 #ship speed (m/s)
 
 numPropellers = 3 #number of propellers 
-dProp = 4.7  # propeller diameter (meters)
+dProp = 5.6  # propeller diameter (meters)
 numBlades = 3 #number of blades on each propeller
 
-n = 4.416 #shaft speed (rotations per second [s^-1]
-#the Hood was 210 (3.5 s^-1), Bismarck was 265 rpm (4.416 s^-1), USS Massachussets was 185 rpm (3.083 rps)
+n = 3.083 #shaft speed (rotations per second [hertz / s^-1]
+#the Hood was 210 (3.5 s^-1), Bismarck was 265 rpm (4.416 s^-1), USS Massachussets was 185 rpm (3.083 rps), RMS Carmania was 185 rpm
 
 propKeelClearance = 0.2 #how many meters between the tip of a propellor at its lowest and the keel line
 ########## CONSTANTS ###############
 
 G = 9.81 #acceleration due to gravity (m/s^2)
 rho  = 1025  #density of fluid (salt water in this case) kg / m^3
-KV = 11.8987e-7 #kinematic viscoscity (m^2/s). Default value of 1.1092 for water at 16 celsius
+KV = 11.8987e-7 #kinematic viscoscity (m^2/s). Default value of 11.8987e-7 for water at 16 celsius
 
 ########## FRICTIONAL RESISTANCE (R_F) CALCS ###############
+
+#volumetric displacement calculation: mass / density
+#displacementVolume = displacementMass / rho
+
+#block coefficient calcs
+cB = displacementMass / (length * beam * T)
+print(f"Block Coeffieicnt: {cB}")
 
 displacement = length * beam * T * cB
 
 cCrossSection = 0.9 #cross-section coefficient. 1 is a rectangle, 0.5 is a triangle. 0.9 default assuming u-shaped hull
 cP = cB / cM #prismatic coefficient calculation
 
+#reynolds number calcs
 reynolds = length * v / KV #10e6 is unit converions from mm^2 to m^2
 cF = 0.075 / (math.log10(reynolds) - 2) ** 2 #cF is coefficient of friction
 
@@ -79,8 +89,6 @@ rF = 0.5 * rho * cF * S * (v ** 2)
 
 
 ########## APPENDANGE RESISTANCE (R_APP) CALCS ###############
-
-
 
 flowAppendage = 1.5 #weighted average approximation. See (Holthrop and Mennen 167) for a more accurate calculation
 
@@ -207,6 +215,8 @@ rA = 0.5 * rho * v **2 * S * cA
 rTotal = rF * (formFactor) + rAPP + rW + rB + rTR + rA
 
 #total resistance deviates 4% from Holthrop + Mennen's example (underestimation of resistance)
+print(f"Frictional Resistance (newtons): {rF * formFactor}")
+print(f"Wave Resistance (newtons): {rW}")
 print(f"Total Resistance (newtons): {rTotal}")
 
 #power = force * velocity
@@ -281,11 +291,6 @@ else: #2 propellers (extrapolated to 2+ propellers)
     t = 0.325 * cB - 0.1885 * dProp / math.sqrt(beam * T)
 
 
-
-
-
-
-
 ########## BLADE AREA RATIO (A_E/A_O) CALCS ###############
 
 
@@ -317,7 +322,7 @@ bladeAreaRatio = K + (1.3 + 0.3 * numBlades) * propThrust / (dProp ** 2 * (99047
 print(f"w: {w}")
 print(f"t: {t}")
 
-print(f"propThrust: {propThrust}")
+print(f"Effective Thrust: {propThrust}")
 
 
 #calculate eta_R here since it is dependent on A_E/A_O for the case of a single screw ship
@@ -385,10 +390,8 @@ eta_S = 0.99 #coefficient ideal conditions (completely calm water, 15 degrees sa
 
 shaftPower = P_E / (eta_R * eta_o * eta_S * (1 - t)/(1 - w))
 
-print(S)
-print(eta_R, eta_o, eta_S, t, w)
 print(shaftPower)
-#sources: overall calculation (Holthrop and Mennen): https://repository.tudelft.nl/islandora/object/uuid:ee370fed-4b4f-4a70-af77-e14c3e692fd4/datastream/OBJ/download
+#sources: overall calculation (Holthrop and Mennen 1978): https://repository.tudelft.nl/islandora/object/uuid:ee370fed-4b4f-4a70-af77-e14c3e692fd4/datastream/OBJ/download
 #coefficient of friction + reynolds number calculation: https://repository.tudelft.nl/islandora/object/uuid%3A16d77473-7043-4099-a8c6-bf58f555e2e7
 #prismatic coefficient (cP): https://www.nautilusshipping.com/form-coefficient-of-ship
 #destroyer ship coefficient numbers: https://www.jstor.org/stable/pdf/44893811.pdf
