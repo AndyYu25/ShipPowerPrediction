@@ -2,23 +2,25 @@ import math
 
 
 ####### INPUT VALUES ############
-#user inputs values
+#user inputs values here
 
-length = 161.8 #length at waterline in meters
-beam = 24.5 #ship beam in meters / moulded breadth
-T = 8.84 #ship draught (meters) / moulded draught. Assumed to be uniform across the ship
-displacementMass = 15842 #ship displacement (metric tons)
+length = 241.5 #length at waterline in meters
+beam = 25.5 #ship beam in meters / moulded breadth
+T = 8 #ship draught (meters) / moulded draught. Assumed to be uniform across the ship
+displacementMass = 24893  #ship displacement (metric tons)
 
 lcb = 0 #longitudinal center of bouynacy (% of ship's length in front of amidships [0.5 L]). Default is 0, or perfectly amidships
 
-cM = 0.95 #midship section coefficient (midship section area / beam * draft). Merchant ships are 0.9, Bismarck was 0.97, Tegethoff (1876) was 0.82, high speed destroyer should have 0.8. 
-#Default to 0.95
+cM = 0.95 #midship section coefficient (midship section area / beam * draft). Merchant ships are 0.9, Bismarck was 0.97, Tegethoff (1876) was 0.82, Minas Geraes was 0.967
+#high speed destroyer should have 0.8. 
+#Default to 0.95   
+
 #cB = 0.55 # block coefficient. Generally between 0.45 and 0.65. Generally, larger warships have a higher block coefficient while smaller warships have a lower block coefficient. Default of 0.55
 
 sAPP = 0 #wetted area appendage. Appendages are any underwater structures protruding from the hull, like the rudder and propellors. Put 0 if unsure.
 
 #water plane coefficient (waterplane area / beam * length). cWP of 1 is a rectangle. Larger ships have a slightly lower cWP than smaller ones.
-#Farraguts were 0.744, post-WWII destroyers were 0.68, Bismarck was 0.66. Default of 0.7
+#Farraguts were 0.744, post-WWII destroyers were 0.68, Bismarck was 0.66, Minas Geraes was 7.12. Default of 0.7
 cWP = 0.7
 
 aBT = 0 #cross-sectional area of bulbous bow (m^2). 0 for non bulbous bow (default) (m^2)
@@ -27,16 +29,19 @@ hB = 4 #height of the center of the bulbous bow above keel line (m). default of 
 aT = 0 # immersed area of the transverse area of the transom at zero speed. (m^2)
 #defaults to 0 for no transom stern
 
-v = 13.89 #ship speed (m/s)
+v = 14.9189 #ship speed (m/s)
 
-numPropellers = 3 #number of propellers 
-dProp = 5.6  # propeller diameter (meters)
+numPropellers = 2 #number of propellers/propeller shafts 
+dProp = 3.7  # propeller diameter (meters)
 numBlades = 3 #number of blades on each propeller
 
-n = 3.083 #shaft speed (rotations per second [hertz / s^-1]
-#the Hood was 210 (3.5 s^-1), Bismarck was 265 rpm (4.416 s^-1), USS Massachussets was 185 rpm (3.083 rps), RMS Carmania was 185 rpm
+n = 3 #shaft speed (rotations per second [hertz / s^-1], default to 3 rps for capital ships if unsure
+#the Hood was 210 (3.5 s^-1), Bismarck was 265 rpm (4.416 s^-1), USS Massachussets was 185 rpm (3.083 rps), RMS Carmania was 185 rpm, Minas Geraes was 147rpm (2.45 rps)
 
-propKeelClearance = 0.2 #how many meters between the tip of a propellor at its lowest and the keel line
+propKeelClearance = 0.2 #how many meters between the tip of a propellor at its lowest and the keel line. Default to 0.2
+
+#TF is the forward draft. Ships are assumed to be large and slow enough that the difference between the amidships and forward draft is negligible
+TF = T
 ########## CONSTANTS ###############
 
 G = 9.81 #acceleration due to gravity (m/s^2)
@@ -45,24 +50,45 @@ KV = 11.8987e-7 #kinematic viscoscity (m^2/s). Default value of 11.8987e-7 for w
 
 ########## FRICTIONAL RESISTANCE (R_F) CALCS ###############
 
-#volumetric displacement calculation: mass / density
-#displacementVolume = displacementMass / rho
+def cB_calcs(displacementMass, length, beam, T):
+    """
+    Return Block coefficient given mass and ship dimensions
+    """
+    cB = displacementMass / (length * beam * T)
+    print(f"Block Coeffieicnt: {displacementMass / (length * beam * T)}")
+    if cB > 1:
+        raise Exception("Block Coefficient > 1! Check Dimensions!")
+    return displacementMass / (length * beam * T)
 
 #block coefficient calcs
-cB = displacementMass / (length * beam * T)
-print(f"Block Coeffieicnt: {cB}")
+def volumetricDisplacement(length, beam, T, cB):
+    """
+    volumetric displacement calculation: mass / density
+    """
+    return length * beam * T * cB
 
-displacement = length * beam * T * cB
+
 
 cCrossSection = 0.9 #cross-section coefficient. 1 is a rectangle, 0.5 is a triangle. 0.9 default assuming u-shaped hull
-cP = cB / cM #prismatic coefficient calculation
 
-#reynolds number calcs
-reynolds = length * v / KV #10e6 is unit converions from mm^2 to m^2
-cF = 0.075 / (math.log10(reynolds) - 2) ** 2 #cF is coefficient of friction
+def cP_calcs(cB, cM):
+    """
+    Returns prismatic coefficient, calculated from block and midship section coefficient
+    """
+    return cB/cM
 
 
-def c12(T, length): #correct
+def cF_calcs(length, v, KV):
+    """
+    Calculates the coefficient of friction based on length, velocity, and kinematic viscosity of water
+    """
+    #reynolds number calcs
+    reynolds = length * v / KV #10e6 is unit converions from mm^2 to m^2
+    return 0.075 / (math.log10(reynolds) - 2) ** 2
+
+
+
+def c12_calcs(T, length): #correct
     """
     returns the c12 coefficient given the draft and length
     """
@@ -74,38 +100,93 @@ def c12(T, length): #correct
     if 0.02 >= ldRatio:
         return 0.479948
 
-cStern = 0 # 10 for U-shaped section with hogner stern, 0 for normal section, -10 for v-shaped sections
-c13 = 1 + 0.003 * cStern
 
-lR = length * ( 1 - cP + 0.06 * cP * lcb / (4 * cP - 1) )
 
-formFactor = c13 * (0.93 + c12(T, length) * (beam / lR) ** 0.92497 * (0.95 * cP) ** -0.521448 * (1 - cP + 0.0225 * lcb) ** 0.6906) # (1 + k1) in original paper
+def c13_calcs(cStern=0):
+    """
+    Returns the regression-defined coefficient c13 calculated from the stern coefficient (default 0 assuming hogner stern)
+    """
+    return 1 + 0.003 * cStern
 
+
+
+
+def lR_calcs(length, cP, lcb):
+    """
+    calculate lR, or run length given the length of the hull, prismatic coefficient, and longitudinal center of bouyancy
+    """
+    return length * ( 1 - cP + 0.06 * cP * lcb / (4 * cP - 1) )
+
+
+
+
+def formFactor_calcs(c13: float, c12: float, lR: float, beam: float, cP:float, lcb: float)->float:
+    """
+    calculates the form factor (1 + k1)
+    """
+    return c13 * (0.93 + c12 * (beam / lR) ** 0.92497 * (0.95 * cP) ** -0.521448 * (1 - cP + 0.0225 * lcb) ** 0.6906)
+
+def S_calcs(length: float, T: float, beam: float, cB: float, cM: float, cWP: float, aBT: float)->float:
+    """
+    Returns S, an approximation of the wetted area of the hull give length, bream, draught, and several coefficients
+    """
+    return length * (2 * T + beam) * math.sqrt(cM) * (0.453 + 0.4425 * cB - 0.2862 * cM - 0.003467 * beam / T + 0.3696 * cWP) + 2.38 * aBT / cB
+
+def rF_calcs(rho, cF, S, v)->float:
+    """
+    computes the total resistance due to friction on the ship hull
+    """
+    return 0.5 * rho * cF * S * (v ** 2)
 
 #wetted area of the hull
-S = length * (2 * T + beam) * math.sqrt(cM) * (0.453 + 0.4425 * cB - 0.2862 * cM - 0.003467 * beam / T + 0.3696 * cWP) + 2.38 * aBT / cB
+cB = cB_calcs(displacementMass, length, beam, T)
+cP = cP_calcs(cB, cM) #prismatic coefficient calculation
+cF = cF_calcs(length, v, KV) #cF is coefficient of friction
+cStern = 0 # 10 for U-shaped section with hogner stern, 0 for normal section, -10 for v-shaped sections
+c12 = c12_calcs(T, length)
+c13 = c13_calcs(cStern)
 
-rF = 0.5 * rho * cF * S * (v ** 2)
+lR = lR_calcs(length, cP, lcb)
+
+print(cP)
+print(lR)
+
+formFactor = formFactor_calcs(c13, c12, lR, beam, cP, lcb)
+S = S_calcs(length, T, beam, cB, cM, cWP, aBT)
+rF = rF_calcs(rho, cF, S, v)
 
 
 ########## APPENDANGE RESISTANCE (R_APP) CALCS ###############
 
-flowAppendage = 1.5 #weighted average approximation. See (Holthrop and Mennen 167) for a more accurate calculation
+flowAppendage = 1.5 #weighted average approximation of the appendage flow coefficient. See (Holthrop and Mennen 167) for a more accurate calculation
 
+def rAPP_calcs(rho, v, sAPP, cF, flowAppendage = 1.5)->float:
+    """
+    calculates resistance from appendages. Default of appendage flow is 1.5
+    """
+    return 0.5 * rho * (v ** 2) * sAPP * flowAppendage * cF
 #resistance from appendages. 1 is the water density
-rAPP = 0.5 * rho * (v ** 2) * sAPP * flowAppendage * cF
+
+rAPP = rAPP_calcs(rho, v, sAPP, cF, flowAppendage)
 
 ########## Wave RESISTANCE (R_W) CALCS ###############
 
-if (beam / length) < 0.11:
-    c7 = 0.229577 * (beam / length) ** (1/3)
-elif 0.11 <= beam / length and beam / length <= 0.25:
-    c7 = beam / length
-elif 0.25 < beam / length:
-    c7 = 0.5 - 0.0625 * length / beam
+def c7_calcs(beam, length)->float:
+    """
+    Calculates the regression-computed coefficient c7, derived from beam and length
+    """
+    if (beam / length) < 0.11:
+        return 0.229577 * (beam / length) ** (1/3)
+    elif 0.11 <= beam / length and beam / length <= 0.25:
+        return beam / length
+    elif 0.25 < beam / length:
+        return 0.5 - 0.0625 * length / beam
 
-#TF is the forward draft. Ships are assumed to be large and slow enough that the difference between the amidships and forward draft is negligible
-TF = T
+c7 = c7_calcs(beam, length)
+
+
+
+
 #influence of bulbous bow on wave resistance
 c3 = 0.56 * aBT ** 1.5 / (beam * T * (0.31 * math.sqrt(aBT) + TF - hB))
 
@@ -126,6 +207,8 @@ nabla = cB  * length * beam * T
 
 #iE is half angle of entrance (angle of the waterline at the bow with reference to the center plane)
 #can be manually inputted, but estimated via regression analysis for user simplicity
+
+print(cWP, cP, lcb, lR, nabla)
 
 iE = 1 + 89 * math.exp(-1 * (length / beam) ** 0.80856 * (1 - cWP) ** 0.30484 * (1 - cP - 0.0225 * lcb) ** 0.6367 
     * (lR / beam) ** 0.34574 * (100 * nabla / length ** 3) ** 0.16302)
@@ -322,7 +405,7 @@ bladeAreaRatio = K + (1.3 + 0.3 * numBlades) * propThrust / (dProp ** 2 * (99047
 print(f"w: {w}")
 print(f"t: {t}")
 
-print(f"Effective Thrust: {propThrust}")
+print(f"Effective Thrust (newtons): {propThrust}")
 
 
 #calculate eta_R here since it is dependent on A_E/A_O for the case of a single screw ship
@@ -390,7 +473,9 @@ eta_S = 0.99 #coefficient ideal conditions (completely calm water, 15 degrees sa
 
 shaftPower = P_E / (eta_R * eta_o * eta_S * (1 - t)/(1 - w))
 
-print(shaftPower)
+print(f"Required Shaft Power (watts) {shaftPower}")
+
+
 #sources: overall calculation (Holthrop and Mennen 1978): https://repository.tudelft.nl/islandora/object/uuid:ee370fed-4b4f-4a70-af77-e14c3e692fd4/datastream/OBJ/download
 #coefficient of friction + reynolds number calculation: https://repository.tudelft.nl/islandora/object/uuid%3A16d77473-7043-4099-a8c6-bf58f555e2e7
 #prismatic coefficient (cP): https://www.nautilusshipping.com/form-coefficient-of-ship
