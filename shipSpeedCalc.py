@@ -279,32 +279,38 @@ m2 = m2_calcs(c15, cP, Fn)
 rW = rW_calcs(c1, c2, c5, nabla, rho, G, m1, Fn, m2, lambda_w)
 ########## BULBOUS BOW RESISTANCE (R_B) CALCS ###############
 
-#measure of emergence of the bow
-p_B = 0.56 * math.sqrt(aBT) / (TF - 1.5 * hB)
+def rB_calcs(aBT, hB, G, TF, v)->float:
+    """
+    calculates the resistance of a bulbous bow given the ship speed and dimensions of the bow
+    """
+    #measure of emergence of the bow
+    p_B = 0.56 * math.sqrt(aBT) / (TF - 1.5 * hB)
 
-#Froude Number based on immersion of the bow
-Fni = v / math.sqrt(G * (TF - hB - 0.25 * math.sqrt(aBT)) + 0.15 * v ** 2)
+    #Froude Number based on immersion of the bow
+    Fni = v / math.sqrt(G * (TF - hB - 0.25 * math.sqrt(aBT)) + 0.15 * v ** 2)
 
-#0 if no bulbous bow 
-if aBT == 0:
-    rB = 0
-else:
-    rB = 0.11 * math.exp(-3 * p_B ** -2) * Fni ** 3 * aBT ** 1.5 * rho * G / (1 + Fni ** 2)
+    #0 if no bulbous bow 
+    if aBT == 0: return 0
+    else: return 0.11 * math.exp(-3 * p_B ** -2) * Fni ** 3 * aBT ** 1.5 * rho * G / (1 + Fni ** 2)
+
+rB = rB_calcs(aBT, hB, G, TF, v)
 
 ########## TRANSOM STERN RESISTANCE (R_TR) CALCS ###############
-#only run calc if transom stern exists
-if aT > 0:
-    #Froude Number based on transom immersion
-    FnT = v / math.sqrt(2 * G * aT / (beam + beam * cWP))
 
-    if FnT < 5:
-        c6 = 0.2 * (1 - 0.2 * FnT)
-    else:
-        c6 = 0
+def rTR_calcs(aT, v, G, beam, cWP, rho)->float:
+    """
+    calculates the resistance caused by a tramson stern based on the dimensions of the ship and the stern
+    """
+    #only run calc if transom stern exists
+    if aT > 0:
+        #Froude Number based on transom immersion
+        FnT = v / math.sqrt(2 * G * aT / (beam + beam * cWP))
+        if FnT < 5: c6 = 0.2 * (1 - 0.2 * FnT)
+        else: c6 = 0
+        return 0.5 * rho * v ** 2 * aT * c6
+    else: return 0
 
-    rTR = 0.5 * rho * v ** 2 * aT * c6
-else:
-    rTR = 0
+rTR = rTR_calcs(aT, v, G, beam, cWP, rho)
 
 ########## MODEL-SHIP CORRELATION RESISTANCE (R_A) CALCS ###############
 
