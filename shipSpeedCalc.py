@@ -117,9 +117,6 @@ def lR_calcs(length, cP, lcb):
     """
     return length * ( 1 - cP + 0.06 * cP * lcb / (4 * cP - 1) )
 
-
-
-
 def formFactor_calcs(c13: float, c12: float, lR: float, beam: float, cP:float, lcb: float)->float:
     """
     calculates the form factor (1 + k1)
@@ -145,12 +142,7 @@ cF = cF_calcs(length, v, KV) #cF is coefficient of friction
 cStern = 0 # 10 for U-shaped section with hogner stern, 0 for normal section, -10 for v-shaped sections
 c12 = c12_calcs(T, length)
 c13 = c13_calcs(cStern)
-
 lR = lR_calcs(length, cP, lcb)
-
-print(cP)
-print(lR)
-
 formFactor = formFactor_calcs(c13, c12, lR, beam, cP, lcb)
 S = S_calcs(length, T, beam, cB, cM, cWP, aBT)
 rF = rF_calcs(rho, cF, S, v)
@@ -182,71 +174,109 @@ def c7_calcs(beam, length)->float:
     elif 0.25 < beam / length:
         return 0.5 - 0.0625 * length / beam
 
-c7 = c7_calcs(beam, length)
+def c3_calcs(aBT, beam, TF, hB)->float:
+    """
+    Calculates the regression-computed coefficient c3, which models the influence of a bulbous bow on wave resistance
+    """
+    return 0.56 * aBT ** 1.5 / (beam * T * (0.31 * math.sqrt(aBT) + TF - hB))
 
-
-
-
-#influence of bulbous bow on wave resistance
-c3 = 0.56 * aBT ** 1.5 / (beam * T * (0.31 * math.sqrt(aBT) + TF - hB))
-
+def c2_calcs(c3)->float:
 #c2 is wave resistance coefficient due to bulbous bow. defaults to 1 for non-bulbous bows
-if aBT == 0: 
-    c2 = 1
-else:
-    c2 = math.exp(-1.89 * math.sqrt(c3))
+    if aBT == 0: return 1
+    else: return math.exp(-1.89 * math.sqrt(c3))
 
-#c5 is wave resistance coefficient due to transom sterns. defaults to 1 for non-transom sterns
-if aT == 0:
-    c5 = 1
-else:
-    c5 = 1 - 0.8 * aT / (beam * T * cM)
+def c5_calcs(aT, beam, T, cM)->float:
+    """
+    Calculates c5, the wave resistance coefficient due to transom sterns. defaults to 1 for non-transom sterns
+    """
+    if aT == 0: return 1
+    else: return 1 - 0.8 * aT / (beam * T * cM)
 
-#moulded displacement volume (nabla)
-nabla = cB  * length * beam * T
+def nabla_calcs(cB, length, beam, T)->float:
+    """
+    Calculates the moulded displacement volume
+    """
+    return cB  * length * beam * T
 
-#iE is half angle of entrance (angle of the waterline at the bow with reference to the center plane)
-#can be manually inputted, but estimated via regression analysis for user simplicity
-
-print(cWP, cP, lcb, lR, nabla)
-
-iE = 1 + 89 * math.exp(-1 * (length / beam) ** 0.80856 * (1 - cWP) ** 0.30484 * (1 - cP - 0.0225 * lcb) ** 0.6367 
+def iE_calcs(length, beam, cWP, cP, lcb, lR, nabla)->float:
+    """
+    calculates the value iE, the half angle of entrance (angle of the waterline at the bow with reference to the center plane)
+    This value can be manually inputted based on the actual design, but estimated via regression analysis for user simplicity
+    """
+    return 1 + 89 * math.exp(-1 * (length / beam) ** 0.80856 * (1 - cWP) ** 0.30484 * (1 - cP - 0.0225 * lcb) ** 0.6367 
     * (lR / beam) ** 0.34574 * (100 * nabla / length ** 3) ** 0.16302)
 
-c1 = 2223105 * c7 ** 3.78613 * (T / beam) ** 1.07961 * (90 - iE) ** -1.37565
+def c1_calcs(c7, T, beam, iE)->float:
+    """
+    Calculates the regression-derived coefficient c1, based on c7, the draught and beam, and the half-angle of entrance
+    """
+    return 2223105 * c7 ** 3.78613 * (T / beam) ** 1.07961 * (90 - iE) ** -1.37565
 
+def froude_length_calcs(v, length, G)->float:
+    """
+    calculates the froude number given the velocity and waterline length
+    """
+    return v / math.sqrt(length * G)
+
+def lamdba_calcs(length, beam, cP)->float:
+    """
+    calculates lambda, a regression-derived coefficient relating to wave resistance
+    """
+    if (length / beam) < 12: return 1.446 * cP - 0.03 * length / beam
+    else: return 1.446 * cP - 0.36
+
+def c16_calcs(cP)->float:
+    """
+    Calculates c16, a regression-derived coefficient based on the prismatic coefficient
+    """
+    if cP <= 0.80: return 8.07981 * cP - 13.8763 * cP ** 2 + 6.984388 * cP ** 3
+    else: return 1.73014 - 0.7067
+
+def m1_calcs(length, T, nabla, beam, c16)->float:
+    """
+    calculates m1, a regression-derived parameter relating to wave resistances
+    """
+    return 0.0140407 * length / T - 1.75254 * nabla ** (1/3) / length - 4.79323 * beam / length - c16
+
+def c15_calcs(length, nabla)->float:
+    """
+    calculates c15, a regression-derived coefficient based on the ratio of the length cubed and nabla
+    """
+    length_nabla = (length ** 3) / nabla
+    if length_nabla < 512: return -1.69385
+    elif length_nabla > 1727: return 0
+    else: return -1.69385 + (length / nabla ** (1.3) - 8.0)/2.36
+
+def m2_calcs(c15, cP, Fn)->float:
+    """
+    calculates m2, a regression-derived parameter relating to wave resistances
+    """
+    return c15 * cP ** 2 * math.exp(-0.1 * Fn ** -2)
+
+def rW_calcs(c1, c2, c5, nabla, rho, G, m1, Fn, m2, lambda_w)->float:
+    """
+    calculates wave resistance based on previously calculated parameters and coefficients 
+    """
+    d = -0.9
+    return c1 * c2 * c5 * nabla * rho * G * math.exp(m1 * Fn ** d + m2 * math.cos(lambda_w * Fn ** -2))
+
+c7 = c7_calcs(beam, length)
+#influence of bulbous bow on wave resistance
+c3 = c3_calcs(aBT, beam, TF, hB)
+c2 = c2_calcs(c3)
+c5 = c5_calcs(aT, beam, T, cM)
+#moulded displacement volume (nabla)
+nabla = nabla_calcs(cB, length, beam, T)
+iE = iE_calcs(length, beam, cWP, cP, lcb, lR, nabla)
+c1 = c1_calcs(c7, T, beam, iE)
 #Froude Number, based on waterline length
-Fn = v / math.sqrt(length * G)
-
-if (length / beam) < 12:
-    lamdba_w = 1.446 * cP - 0.03 * length / beam
-else:
-    lamdba_w = 1.446 * cP - 0.36
-
-
-if cP <= 0.80:
-    c16 = 8.07981 * cP - 13.8763 * cP ** 2 + 6.984388 * cP ** 3
-else:
-    c16 = 1.73014 - 0.7067
-
-m1 = 0.0140407 * length / T - 1.75254 * nabla ** (1/3) / length - 4.79323 * beam / length - c16
-
-length_nabla = (length ** 3) / nabla
-
-d = -0.9
-
-
-if length_nabla < 512:
-    c15 = -1.69385
-elif length_nabla > 1727:
-    c15 = 0
-else:
-    c15 = -1.69385 + (length / nabla ** (1.3) - 8.0)/2.36
-
-m2 = c15 * cP ** 2 * math.exp(-0.1 * Fn ** -2)
-
-rW = c1 * c2 * c5 * nabla * rho * G * math.exp(m1 * Fn ** d + m2 * math.cos(lamdba_w * Fn ** -2))
-
+Fn = froude_length_calcs(v, length, G)
+lambda_w = lamdba_calcs(length, beam, cP)
+c16 = c16_calcs(cP)
+m1 = m1_calcs(length, T, nabla, beam, c16)
+c15 = c15_calcs(length, nabla)
+m2 = m2_calcs(c15, cP, Fn)
+rW = rW_calcs(c1, c2, c5, nabla, rho, G, m1, Fn, m2, lambda_w)
 ########## BULBOUS BOW RESISTANCE (R_B) CALCS ###############
 
 #measure of emergence of the bow
