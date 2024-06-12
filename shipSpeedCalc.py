@@ -48,6 +48,12 @@ G = 9.81 #acceleration due to gravity (m/s^2)
 rho  = 1025  #density of fluid (salt water in this case) kg / m^3
 KV = 11.8987e-7 #kinematic viscoscity (m^2/s). Default value of 11.8987e-7 for water at 16 celsius
 
+########## APPROXIMATED PARAMETERS ###############
+
+cCrossSection = 0.9 #cross-section coefficient. 1 is a rectangle, 0.5 is a triangle. 0.9 default assuming u-shaped hull
+flowAppendage = 1.5 #weighted average approximation of the appendage flow coefficient. See (Holthrop and Mennen 167) for a more accurate calculation
+
+
 ########## FRICTIONAL RESISTANCE (R_F) CALCS ###############
 
 def cB_calcs(displacementMass, length, beam, T):
@@ -68,15 +74,11 @@ def volumetricDisplacement(length, beam, T, cB):
     return length * beam * T * cB
 
 
-
-cCrossSection = 0.9 #cross-section coefficient. 1 is a rectangle, 0.5 is a triangle. 0.9 default assuming u-shaped hull
-
 def cP_calcs(cB, cM):
     """
     Returns prismatic coefficient, calculated from block and midship section coefficient
     """
     return cB/cM
-
 
 def cF_calcs(length, v, KV):
     """
@@ -85,8 +87,6 @@ def cF_calcs(length, v, KV):
     #reynolds number calcs
     reynolds = length * v / KV #10e6 is unit converions from mm^2 to m^2
     return 0.075 / (math.log10(reynolds) - 2) ** 2
-
-
 
 def c12_calcs(T, length): #correct
     """
@@ -100,16 +100,11 @@ def c12_calcs(T, length): #correct
     if 0.02 >= ldRatio:
         return 0.479948
 
-
-
 def c13_calcs(cStern=0):
     """
     Returns the regression-defined coefficient c13 calculated from the stern coefficient (default 0 assuming hogner stern)
     """
     return 1 + 0.003 * cStern
-
-
-
 
 def lR_calcs(length, cP, lcb):
     """
@@ -135,22 +130,10 @@ def rF_calcs(rho, cF, S, v)->float:
     """
     return 0.5 * rho * cF * S * (v ** 2)
 
-#wetted area of the hull
-cB = cB_calcs(displacementMass, length, beam, T)
-cP = cP_calcs(cB, cM) #prismatic coefficient calculation
-cF = cF_calcs(length, v, KV) #cF is coefficient of friction
-cStern = 0 # 10 for U-shaped section with hogner stern, 0 for normal section, -10 for v-shaped sections
-c12 = c12_calcs(T, length)
-c13 = c13_calcs(cStern)
-lR = lR_calcs(length, cP, lcb)
-formFactor = formFactor_calcs(c13, c12, lR, beam, cP, lcb)
-S = S_calcs(length, T, beam, cB, cM, cWP, aBT)
-rF = rF_calcs(rho, cF, S, v)
 
 
 ########## APPENDANGE RESISTANCE (R_APP) CALCS ###############
 
-flowAppendage = 1.5 #weighted average approximation of the appendage flow coefficient. See (Holthrop and Mennen 167) for a more accurate calculation
 
 def rAPP_calcs(rho, v, sAPP, cF, flowAppendage = 1.5)->float:
     """
@@ -159,7 +142,6 @@ def rAPP_calcs(rho, v, sAPP, cF, flowAppendage = 1.5)->float:
     return 0.5 * rho * (v ** 2) * sAPP * flowAppendage * cF
 #resistance from appendages. 1 is the water density
 
-rAPP = rAPP_calcs(rho, v, sAPP, cF, flowAppendage)
 
 ########## Wave RESISTANCE (R_W) CALCS ###############
 
@@ -260,6 +242,84 @@ def rW_calcs(c1, c2, c5, nabla, rho, G, m1, Fn, m2, lambda_w)->float:
     d = -0.9
     return c1 * c2 * c5 * nabla * rho * G * math.exp(m1 * Fn ** d + m2 * math.cos(lambda_w * Fn ** -2))
 
+########## BULBOUS BOW RESISTANCE (R_B) CALCS ###############
+
+def rB_calcs(aBT, hB, G, TF, v)->float:
+    """
+    calculates the resistance of a bulbous bow given the ship speed and dimensions of the bow
+    """
+    #measure of emergence of the bow
+    p_B = 0.56 * math.sqrt(aBT) / (TF - 1.5 * hB)
+
+    #Froude Number based on immersion of the bow
+    Fni = v / math.sqrt(G * (TF - hB - 0.25 * math.sqrt(aBT)) + 0.15 * v ** 2)
+
+    #0 if no bulbous bow 
+    if aBT == 0: return 0
+    else: return 0.11 * math.exp(-3 * p_B ** -2) * Fni ** 3 * aBT ** 1.5 * rho * G / (1 + Fni ** 2)
+
+
+
+########## TRANSOM STERN RESISTANCE (R_TR) CALCS ###############
+
+def rTR_calcs(aT, v, G, beam, cWP, rho)->float:
+    """
+    calculates the resistance caused by a tramson stern based on the dimensions of the ship and the stern
+    """
+    #only run calc if transom stern exists
+    if aT > 0:
+        #Froude Number based on transom immersion
+        FnT = v / math.sqrt(2 * G * aT / (beam + beam * cWP))
+        if FnT < 5: c6 = 0.2 * (1 - 0.2 * FnT)
+        else: c6 = 0
+        return 0.5 * rho * v ** 2 * aT * c6
+    else: return 0
+
+
+
+########## MODEL-SHIP CORRELATION RESISTANCE (R_A) CALCS ###############
+
+def cA_calcs(TF, length, cB)->float:
+    """
+    calculates the correlation allowance coefficient
+    """
+    #c4 factors in the tramsom stern
+    if TF / length <= 0.04: c4 = TF / length
+    else: c4 = 0.04
+    #
+    return 0.006 * (length + 100) ** -0.16 - 0.00205 + 0.003 * math.sqrt(length / 7.5) * cB ** 4 * c2 * (0.04 - c4)
+
+
+def rA_calcs(v, cA, rho)->float:
+    """ 
+    Calculates the model-ship correlation resistance
+    """
+    return 0.5 * rho * v **2 * S * cA
+
+
+########## TOTAL RESISTANCE CALCS ###############
+
+
+def rTotal_calcs(rF, formFactor, rAPP, rW, rB, rTR, rA)->float:
+    """
+    calculates total resistance force on the ship (as newtons) using previously calculated factors
+    rTotal = cF * (formFactor) + rAPP + rW + rB + rTR + rA
+    """
+    #total resistance (newtons)
+    return rF * (formFactor) + rAPP + rW + rB + rTR + rA
+
+#wetted area of the hull
+cB = cB_calcs(displacementMass, length, beam, T)
+cP = cP_calcs(cB, cM) #prismatic coefficient calculation
+cF = cF_calcs(length, v, KV) #cF is coefficient of friction
+cStern = 0 # 10 for U-shaped section with hogner stern, 0 for normal section, -10 for v-shaped sections
+c12 = c12_calcs(T, length)
+c13 = c13_calcs(cStern)
+lR = lR_calcs(length, cP, lcb)
+formFactor = formFactor_calcs(c13, c12, lR, beam, cP, lcb)
+S = S_calcs(length, T, beam, cB, cM, cWP, aBT)
+rF = rF_calcs(rho, cF, S, v)
+rAPP = rAPP_calcs(rho, v, sAPP, cF, flowAppendage)
 c7 = c7_calcs(beam, length)
 #influence of bulbous bow on wave resistance
 c3 = c3_calcs(aBT, beam, TF, hB)
@@ -277,62 +337,11 @@ m1 = m1_calcs(length, T, nabla, beam, c16)
 c15 = c15_calcs(length, nabla)
 m2 = m2_calcs(c15, cP, Fn)
 rW = rW_calcs(c1, c2, c5, nabla, rho, G, m1, Fn, m2, lambda_w)
-########## BULBOUS BOW RESISTANCE (R_B) CALCS ###############
-
-def rB_calcs(aBT, hB, G, TF, v)->float:
-    """
-    calculates the resistance of a bulbous bow given the ship speed and dimensions of the bow
-    """
-    #measure of emergence of the bow
-    p_B = 0.56 * math.sqrt(aBT) / (TF - 1.5 * hB)
-
-    #Froude Number based on immersion of the bow
-    Fni = v / math.sqrt(G * (TF - hB - 0.25 * math.sqrt(aBT)) + 0.15 * v ** 2)
-
-    #0 if no bulbous bow 
-    if aBT == 0: return 0
-    else: return 0.11 * math.exp(-3 * p_B ** -2) * Fni ** 3 * aBT ** 1.5 * rho * G / (1 + Fni ** 2)
-
 rB = rB_calcs(aBT, hB, G, TF, v)
-
-########## TRANSOM STERN RESISTANCE (R_TR) CALCS ###############
-
-def rTR_calcs(aT, v, G, beam, cWP, rho)->float:
-    """
-    calculates the resistance caused by a tramson stern based on the dimensions of the ship and the stern
-    """
-    #only run calc if transom stern exists
-    if aT > 0:
-        #Froude Number based on transom immersion
-        FnT = v / math.sqrt(2 * G * aT / (beam + beam * cWP))
-        if FnT < 5: c6 = 0.2 * (1 - 0.2 * FnT)
-        else: c6 = 0
-        return 0.5 * rho * v ** 2 * aT * c6
-    else: return 0
-
 rTR = rTR_calcs(aT, v, G, beam, cWP, rho)
-
-########## MODEL-SHIP CORRELATION RESISTANCE (R_A) CALCS ###############
-
-#c4 factors in the tramsom stern
-if TF / length <= 0.04:
-    c4 = TF / length
-else:
-    c4 = 0.04
-
-#correlation allowance coefficient
-cA = 0.006 * (length + 100) ** -0.16 - 0.00205 + 0.003 * math.sqrt(length / 7.5) * cB ** 4 * c2 * (0.04 - c4)
-
-rA = 0.5 * rho * v **2 * S * cA
-
-########## TOTAL RESISTANCE CALCS ###############
-
-
-#total resistance (newtons)
-#faulty formula + assumptions: disregard resistance from appendages
-#rTotal = cF * (formFactor) + rAPP + rW + rB + rTR + rA
-rTotal = rF * (formFactor) + rAPP + rW + rB + rTR + rA
-
+cA = cA_calcs(TF, length, cB)
+rA = rA_calcs(v, cA, rho)
+rTotal = rTotal_calcs(rF, formFactor, rAPP, rW, rB, rTR, rA)
 #total resistance deviates 4% from Holthrop + Mennen's example (underestimation of resistance)
 print(f"Frictional Resistance (newtons): {rF * formFactor}")
 print(f"Wave Resistance (newtons): {rW}")
