@@ -1,62 +1,6 @@
 import math
 
 
-####### INPUT VALUES ############
-#user inputs values here
-
-length = 241.5 #length at waterline in meters
-beam = 25.5 #ship beam in meters / moulded breadth
-T = 8 #ship draught (meters) / moulded draught. Assumed to be uniform across the ship
-displacementMass = 24893  #ship displacement (metric tons)
-
-lcb = 0 #longitudinal center of bouynacy (% of ship's length in front of amidships [0.5 L]). Default is 0, or perfectly amidships
-
-cM = 0.95 #midship section coefficient (midship section area / beam * draft). Merchant ships are 0.9, Bismarck was 0.97, Tegethoff (1876) was 0.82, Minas Geraes was 0.967
-#high speed destroyer should have 0.8. 
-#Default to 0.95   
-
-#cB = 0.55 # block coefficient. Generally between 0.45 and 0.65. Generally, larger warships have a higher block coefficient while smaller warships have a lower block coefficient. Default of 0.55
-
-sAPP = 0 #wetted area appendage. Appendages are any underwater structures protruding from the hull, like the rudder and propellors. Put 0 if unsure.
-
-#water plane coefficient (waterplane area / beam * length). cWP of 1 is a rectangle. Larger ships have a slightly lower cWP than smaller ones.
-#Farraguts were 0.744, post-WWII destroyers were 0.68, Bismarck was 0.66, Minas Geraes was 7.12. Default of 0.7
-cWP = 0.7
-
-aBT = 0 #cross-sectional area of bulbous bow (m^2). 0 for non bulbous bow (default) (m^2)
-hB = 4 #height of the center of the bulbous bow above keel line (m). default of 4, not used if aBT = 0
-
-aT = 0 # immersed area of the transverse area of the transom at zero speed. (m^2)
-#defaults to 0 for no transom stern
-
-v = 14.9189 #ship speed (m/s)
-
-numPropellers = 2 #number of propellers/propeller shafts 
-dProp = 3.7  # propeller diameter (meters)
-numBlades = 3 #number of blades on each propeller
-
-n = 3 #shaft speed (rotations per second [hertz / s^-1], default to 3 rps for capital ships if unsure
-#the Hood was 210 (3.5 s^-1), Bismarck was 265 rpm (4.416 s^-1), USS Massachussets was 185 rpm (3.083 rps), RMS Carmania was 185 rpm, Minas Geraes was 147rpm (2.45 rps)
-
-propKeelClearance = 0.2 #how many meters between the tip of a propellor at its lowest and the keel line. Default to 0.2
-
-#TF is the forward draft. Ships are assumed to be large and slow enough that the difference between the amidships and forward draft is negligible
-TF = T
-########## CONSTANTS ###############
-
-G = 9.81 #acceleration due to gravity (m/s^2)
-rho  = 1025  #density of fluid (salt water in this case) kg / m^3
-KV = 11.8987e-7 #kinematic viscoscity (m^2/s). Default value of 11.8987e-7 for water at 16 celsius
-k_p = 0.00003 #propeller roughness (for 1980s props, may be higher with fouled or older propellers, but assume 0.00003 for simplicity)
-#eta_s is the sea efficincy coefficient, which accounts for sea currents, water quality, and fouling
-eta_S = 0.99 #coefficient ideal conditions (completely calm water, 15 degrees saltwater, clean hull + propeller)
-
-
-########## APPROXIMATED PARAMETERS ###############
-
-cCrossSection = 0.9 #cross-section coefficient. 1 is a rectangle, 0.5 is a triangle. 0.9 default assuming u-shaped hull
-flowAppendage = 1.5 #weighted average approximation of the appendage flow coefficient. See (Holthrop and Mennen 167) for a more accurate calculation
-
 
 ########## FRICTIONAL RESISTANCE (R_F) CALCS ###############
 
@@ -66,8 +10,8 @@ def cB_calcs(displacementMass, length, beam, T):
     """
     cB = displacementMass / (length * beam * T)
     print(f"Block Coeffieicnt: {displacementMass / (length * beam * T)}")
-    if cB > 1:
-        raise Exception("Block Coefficient > 1! Check Dimensions!")
+    if cB >= 1:
+        raise Exception("Block Coefficient >= 1! Check Dimensions!")
     return displacementMass / (length * beam * T)
 
 #block coefficient calcs
@@ -160,13 +104,13 @@ def c7_calcs(beam, length)->float:
     elif 0.25 < beam / length:
         return 0.5 - 0.0625 * length / beam
 
-def c3_calcs(aBT, beam, TF, hB)->float:
+def c3_calcs(aBT, beam, TF, T, hB)->float:
     """
     Calculates the regression-computed coefficient c3, which models the influence of a bulbous bow on wave resistance
     """
     return 0.56 * aBT ** 1.5 / (beam * T * (0.31 * math.sqrt(aBT) + TF - hB))
 
-def c2_calcs(c3)->float:
+def c2_calcs(c3, aBT)->float:
 #c2 is wave resistance coefficient due to bulbous bow. defaults to 1 for non-bulbous bows
     if aBT == 0: return 1
     else: return math.exp(-1.89 * math.sqrt(c3))
@@ -283,7 +227,7 @@ def rTR_calcs(aT, v, G, beam, cWP, rho)->float:
 
 ########## MODEL-SHIP CORRELATION RESISTANCE (R_A) CALCS ###############
 
-def cA_calcs(TF, length, cB)->float:
+def cA_calcs(TF, length, cB, c2)->float:
     """
     calculates the correlation allowance coefficient
     """
@@ -294,7 +238,7 @@ def cA_calcs(TF, length, cB)->float:
     return 0.006 * (length + 100) ** -0.16 - 0.00205 + 0.003 * math.sqrt(length / 7.5) * cB ** 4 * c2 * (0.04 - c4)
 
 
-def rA_calcs(v, cA, rho)->float:
+def rA_calcs(v, cA, rho, S)->float:
     """ 
     Calculates the model-ship correlation resistance
     """
@@ -312,45 +256,6 @@ def rTotal_calcs(rF, formFactor, rAPP, rW, rB, rTR, rA)->float:
     #total resistance (newtons)
     return rF * (formFactor) + rAPP + rW + rB + rTR + rA
 
-#wetted area of the hull
-cB = cB_calcs(displacementMass, length, beam, T)
-cP = cP_calcs(cB, cM) #prismatic coefficient calculation
-cF = cF_calcs(length, v, KV) #cF is coefficient of friction
-cStern = 0 # 10 for U-shaped section with hogner stern, 0 for normal section, -10 for v-shaped sections
-c12 = c12_calcs(T, length)
-c13 = c13_calcs(cStern)
-lR = lR_calcs(length, cP, lcb)
-formFactor = formFactor_calcs(c13, c12, lR, beam, cP, lcb)
-S = S_calcs(length, T, beam, cB, cM, cWP, aBT)
-rF = rF_calcs(rho, cF, S, v)
-rAPP = rAPP_calcs(rho, v, sAPP, cF, flowAppendage)
-c7 = c7_calcs(beam, length)
-#influence of bulbous bow on wave resistance
-c3 = c3_calcs(aBT, beam, TF, hB)
-c2 = c2_calcs(c3)
-c5 = c5_calcs(aT, beam, T, cM)
-#moulded displacement volume (nabla)
-nabla = nabla_calcs(cB, length, beam, T)
-iE = iE_calcs(length, beam, cWP, cP, lcb, lR, nabla)
-c1 = c1_calcs(c7, T, beam, iE)
-#Froude Number, based on waterline length
-Fn = froude_length_calcs(v, length, G)
-lambda_w = lamdba_calcs(length, beam, cP)
-c16 = c16_calcs(cP)
-m1 = m1_calcs(length, T, nabla, beam, c16)
-c15 = c15_calcs(length, nabla)
-m2 = m2_calcs(c15, cP, Fn)
-rW = rW_calcs(c1, c2, c5, nabla, rho, G, m1, Fn, m2, lambda_w)
-rB = rB_calcs(aBT, hB, G, TF, v)
-rTR = rTR_calcs(aT, v, G, beam, cWP, rho)
-cA = cA_calcs(TF, length, cB)
-rA = rA_calcs(v, cA, rho)
-rTotal = rTotal_calcs(rF, formFactor, rAPP, rW, rB, rTR, rA)
-#total resistance deviates 4% from Holthrop + Mennen's example (underestimation of resistance)
-print(f"Frictional Resistance (newtons): {rF * formFactor}")
-print(f"Wave Resistance (newtons): {rW}")
-print(f"Total Resistance (newtons): {rTotal}")
-
 def externalPower_calcs(rTotal, v)->float:
     """
     calculates the external/effective power applied to the ship as a whole, NOT the shaft power, which is the power applied to the shafts
@@ -358,9 +263,6 @@ def externalPower_calcs(rTotal, v)->float:
     """
     return rTotal * v
 
-P_E = externalPower_calcs(rTotal, v)
-#power deviates ~2% from Holthrop + Mennen's example (underestimation)
-print(f"Effective Power (watts): {P_E}")
 
 def cV_calcs(formFactor, cF, cA)->float:
     """
@@ -369,7 +271,7 @@ def cV_calcs(formFactor, cF, cA)->float:
     """
     return formFactor * cF + cA
 
-cV = cV_calcs(formFactor, cF, cA)
+
 
 
 ########## PROPELLER-VARIABLE CALCS (w, t, eta_R) ###############
@@ -387,7 +289,7 @@ def c8_calcs(beam, T, S, length, dProp)->float:
     else:
         return S * (7 * beam / T - 25) / (length * dProp * (beam / T - 3))
 
-c8 = c8_calcs(beam, T, S, length, dProp)
+
 
 def c9_calcs(c8)->float:
     """
@@ -396,8 +298,8 @@ def c9_calcs(c8)->float:
     if c8 < 28: return c8
     else:
         return 32 - 16 / (c8 - 24)
-    
-c9 = c9_calcs(c8)
+
+
 
 def c10_calcs(beam, length)->float:
     """
@@ -408,7 +310,7 @@ def c10_calcs(beam, length)->float:
     else:
         return 0.25 - 0.003328402 * (beam / length - 0.134615385)
 
-c10 = c10_calcs(beam, length)
+
 
 def c11_calcs(T, dProp)->float:
     """
@@ -419,7 +321,7 @@ def c11_calcs(T, dProp)->float:
     else:
         return 0.0833333 * (T / dProp) ** 3 + 1.33333
 
-c11 = c11_calcs(T, dProp)
+
 
 def cP1_calcs(cP, lcb)->float:
     """
@@ -427,13 +329,7 @@ def cP1_calcs(cP, lcb)->float:
     """
     return 1.45 * cP - 0.315 - 0.0225 * lcb
 
-cP1 = cP1_calcs(cP, lcb)
 
-print(f"cP1: {cP1}")
-print(f"c11: {c11}")
-print(f"c9: {c9}")
-print(f"cV: {cV}")
-print(f"cStern: {cStern}")
 
 def c20_calcs(cStern)->float:
     """
@@ -441,7 +337,7 @@ def c20_calcs(cStern)->float:
     """
     return 1.0 + 0.015 * cStern
 
-c20 = c20_calcs(cStern)
+
 
 def c19_calcs(cB, cP, cM)->float:
     """
@@ -452,9 +348,9 @@ def c19_calcs(cB, cP, cM)->float:
     else:
         return 0.18567 / (1.3571 - cM) - 0.71276 + 0.38648 * cP
 
-c19 = c19_calcs(cB, cP, cM)
 
-def wt_calcs(c9, c20, cV, length, T, c11, cP1, beam, c19, dProp, cStern, cB)->float:
+
+def wt_calcs(c9, c20, cV, length, T, c11, cP1, beam, c19, dProp, cStern, cB, numPropellers)->float:
     """
     Calculates the wake fraction (w) and thrust deduction coefficients (t).
     """
@@ -472,7 +368,7 @@ def wt_calcs(c9, c20, cV, length, T, c11, cP1, beam, c19, dProp, cStern, cB)->fl
         td = 0.325 * cB - 0.1885 * dProp / math.sqrt(beam * T)
     return w, td
 
-w, td = wt_calcs(c9, c20, cV, length, T, c11, cP1, beam, c19, dProp, cStern, cB)
+
 
 
 ########## BLADE AREA RATIO (A_E/A_O) CALCS ###############
@@ -486,7 +382,6 @@ def K_calcs(numPropellers)->float:
     elif numPropellers > 1: return 0.1
     else: raise Exception("Ship cannot have less than 1 propeller!")
 
-K = K_calcs(numPropellers)
 
 
 def hShaft_calcs(T, propKeelClearance, dProp)->float:
@@ -495,7 +390,8 @@ def hShaft_calcs(T, propKeelClearance, dProp)->float:
     """
     return T - (propKeelClearance + dProp / 2)
 
-hShaft = hShaft_calcs(T, propKeelClearance, dProp)
+
+
 
 
 def pitch_calcs(v, w, n)->float:
@@ -504,9 +400,6 @@ def pitch_calcs(v, w, n)->float:
     formula: pitch velocity * wake field coefficient (to account for propeller slip) / rotational frequency
     """
     return v * (1 - w) / n
-
-pitch = pitch_calcs(v, w, n)
-
 
 def propThrust_calcs(rTotal, td)->float:
     """
@@ -517,7 +410,7 @@ def propThrust_calcs(rTotal, td)->float:
     """
     return rTotal / (1 - td)
 
-propThrust = propThrust_calcs(rTotal, td)
+
 
 def bladeAreaRatio_calcs(K, numBlades, propThrust, dProp, rho, G, hShaft)->float:
     """
@@ -528,11 +421,6 @@ def bladeAreaRatio_calcs(K, numBlades, propThrust, dProp, rho, G, hShaft)->float
     """
     return  K + (1.3 + 0.3 * numBlades) * propThrust / (dProp ** 2 * (99047 + rho * G * hShaft))
 
-bladeAreaRatio = bladeAreaRatio_calcs(K, numBlades, propThrust, dProp, rho, G, hShaft)
-print(f"w: {w}")
-print(f"t: {td}")
-
-print(f"Effective Thrust (newtons): {propThrust}")
 
 def etaR_calcs(numPropellers, bladeAreaRatio, cP, lcb, pitch, dProp)->float:
     #calculate eta_R here since it is dependent on A_E/A_O for the case of a single screw ship
@@ -540,9 +428,6 @@ def etaR_calcs(numPropellers, bladeAreaRatio, cP, lcb, pitch, dProp)->float:
         return 0.9922 - 0.05908 * bladeAreaRatio + 0.07424 * (cP - 0.0225 * lcb)
     else:
         return 0.9737 + 0.111 * (cP - 0.0225 * lcb) + 0.06325 * pitch / dProp
-    
-eta_R = etaR_calcs(numPropellers, bladeAreaRatio, cP, lcb, pitch, dProp)
-
 
 ########## OPEN WATER PROPELLER EFFICIENCY CALCS (eta_o) ###############
 
@@ -551,8 +436,6 @@ def chordLength_calcs(bladeAreaRatio, dProp, numBlades)->float:
     calculate c_0.75, or the chord length of the propeller
     """
     return 2.073 * (bladeAreaRatio) * dProp / numBlades
-#chord length
-c_075 = chordLength_calcs(bladeAreaRatio, dProp, numBlades)
 
 def tc_calcs(numBlades, c_075)->float:
     """
@@ -560,23 +443,11 @@ def tc_calcs(numBlades, c_075)->float:
     """
     return (0.0185 - 0.00125 * numBlades) / c_075
 
-tc_075 = tc_calcs(numBlades, c_075)
-
 def deltaCD_calcs(tc_075, c_075, k_p)->float:
     """
     Calculates the different in drag coefficients of the hull profile section
     """
     return (2 + 4 * tc_075) * (0.003605 - (1.89 + 1.62 * math.log(c_075 / k_p)) ** -2.5)
-
-#difference in drag coefficients of the profile section
-delta_CD = deltaCD_calcs(tc_075, c_075, k_p)
-
-print(f"bladeAreaRatio: {bladeAreaRatio}")
-print(f"c_075: {c_075}")
-print(f"tc_075: {tc_075}")
-print(f"k_p: {k_p}")
-print(f"delta_CD: {delta_CD}")
-
 
 def ktb_calcs(propThrust, rho, dProp, n)->float:
     """
@@ -588,7 +459,8 @@ def ktb_calcs(propThrust, rho, dProp, n)->float:
     #ITTC 1978 formulas
     return propThrust / (rho * dProp ** 4 * n ** 2)
 
-K_T_B = ktb_calcs(propThrust, rho, dProp, n)
+
+
 
 def kt_calcs(K_T_B, delta_CD, pitch, c_075, numBlades, dProp)->float:
     """
@@ -596,7 +468,6 @@ def kt_calcs(K_T_B, delta_CD, pitch, c_075, numBlades, dProp)->float:
     """
     return K_T_B + delta_CD * 0.3 * (pitch * c_075 * numBlades) / dProp ** 2
 
-K_T = kt_calcs(K_T_B, delta_CD, pitch, c_075, numBlades, dProp)
 
 def j_calcs(v, w, td, n, dProp)->float:
     """
@@ -604,7 +475,6 @@ def j_calcs(v, w, td, n, dProp)->float:
     """
     return v * (1 - w * td) / (n * dProp)
 
-J = j_calcs(v, w, td, n, dProp)
 
 #can't figure out torque
 #K_Q_B = propTorque / (rho * dProp ** 5 * n ** 2)
@@ -618,7 +488,6 @@ def cTH_calcs(K_T, J)->float:
     """
     return (K_T / J ** 2) * 8 / math.pi
 
-cTH = cTH_calcs(K_T, J)
 
 def etao_calcs(cTH, trueEfficiencyCoefficient = 0.7)->float:
     """
@@ -632,7 +501,6 @@ def etao_calcs(cTH, trueEfficiencyCoefficient = 0.7)->float:
     #still results in optimistic measurements
     eta_o *= trueEfficiencyCoefficient
     return eta_o
-eta_o = etao_calcs(cTH, trueEfficiencyCoefficient = 0.7)
 ########## TOTAL SHAFT POWER CALCS ###############
 
 def shaftPowerCalcs(P_E, eta_R, eta_o, eta_S, td, w)->float:
@@ -640,10 +508,145 @@ def shaftPowerCalcs(P_E, eta_R, eta_o, eta_S, td, w)->float:
     Calculates the required shaft power given the external power and all the efficiency coefficients
     """
     return P_E / (eta_R * eta_o * eta_S * (1 - td)/(1 - w))
-shaftPower = shaftPowerCalcs(P_E, eta_R, eta_o, eta_S, td, w)
 
-print(f"Required Shaft Power (watts) {shaftPower}")
 
+def HoltropMennenPowerCalculation(length, beam, T, displacementMass, v,
+                                  lcb = 0, cM = 0.95, sAPP = 0, cWP = 0.7, aBT = 0,
+                                  hB = 4, aT = 0, numPropellers = 2, dProp = 3.5,
+                                  numBlades = 3, n = 3, propKeelClearance = 2):
+    """
+    Full calculation of resistance and shaft power. length, beam, draft, displacement, and velocity are required, all other params are optional.
+    All units are in metric
+    PARAMETERS:
+    length: waterline length of ship in meters
+    beam: beam of the ship (at its widest) in meters
+    T: the average draft/depth of the ship at the given displacement in meters. program assumes uniform draft.
+    displacementMass: the displacement of the ship at a given load in metric tons. Trial measurements are ideal, but other displacements are fine.
+    v: the speed of the ship, in meters per second
+    lcb: longitudinal center of bouynacy (% of ship's length in front of amidships [0.5 L]). Default is 0, or perfectly amidships
+    cM: midship section coefficient (midship section area / beam * draft). Merchant ships are 0.9, Bismarck was 0.97
+        Tegethoff (1876) was 0.82, Minas Geraes was 0.967, high speed destroyer should have 0.8. Default is 0.95
+    sAPP: wetted area appendage. Appendages are any underwater structures protruding from the hull, like the rudder and propellors. Default is 0 if unsure.
+    cWP: water plane coefficient (waterplane area / beam * length). cWP of 1 is a rectangle. Larger ships have a slightly lower cWP than smaller ones.
+        Farraguts were 0.744, post-WWII destroyers were 0.68, Bismarck was 0.66, Minas Geraes was 7.12. Default of 0.7.
+    aBT: cross-sectional area of the bulbous bow in square meters. 0 for non bulbous bow (default)
+    hB: height of the center of the bulbous bow above keel line in meters. default of 4, not used if aBT = 0
+    aT: immersed area of the transverse area of the transom at zero speed in square meters. Default is 0 for no tramson stern
+    numPropellers: number of shafts driving propellers (thrusters exclusively for steering don't count).
+    dProp: average diameter of the propellers (meters). Default of 3.5 meters
+    numBlades: number of blades on each propeller. Default of 3
+    n: the average shaft speed in rotations per second or hertz. Default of 3 rotations per second. 
+        HMS Hood was 210 (3.5 s^-1), Bismarck was 265 rpm (4.416 s^-1), USS Massachussets was 185 rpm (3.083 rps),
+        RMS Carmania was 185 rpm, Minas Geraes was 147rpm (2.45 rps)
+    propKeelClearance: how many meters between the tip of a propellor at its lowest and the keel line. Default to 0.2
+    """
+    ####### INPUT VALUES ############
+
+
+    #TF is the forward draft. Ships are assumed to be large and slow enough that the difference between the amidships and forward draft is negligible
+    TF = T
+    ########## CONSTANTS ###############
+
+    G = 9.81 #acceleration due to gravity (m/s^2)
+    rho  = 1025  #density of fluid (salt water in this case) kg / m^3
+    KV = 11.8987e-7 #kinematic viscoscity (m^2/s). Default value of 11.8987e-7 for water at 16 celsius
+
+    ########## APPROXIMATED PARAMETERS ###############
+    k_p = 0.00003 #propeller roughness (for 1980s props, may be higher with fouled or older propellers, but assume 0.00003 for simplicity)
+    #eta_s is the sea efficincy coefficient, which accounts for sea currents, water quality, and fouling
+    eta_S = 0.99 #coefficient ideal conditions (completely calm water, 15 degrees saltwater, clean hull + propeller)
+    cCrossSection = 0.9 #cross-section coefficient. 1 is a rectangle, 0.5 is a triangle. 0.9 default assuming u-shaped hull
+    flowAppendage = 1.5 #weighted average approximation of the appendage flow coefficient. See (Holthrop and Mennen 167) for a more accurate calculation
+
+    #RESISTANCE CALCULATIONS
+    #wetted area of the hull
+    cB = cB_calcs(displacementMass, length, beam, T)
+    cP = cP_calcs(cB, cM) #prismatic coefficient calculation
+    cF = cF_calcs(length, v, KV) #cF is coefficient of friction
+    cStern = 0 # 10 for U-shaped section with hogner stern, 0 for normal section, -10 for v-shaped sections
+    c12 = c12_calcs(T, length)
+    c13 = c13_calcs(cStern)
+    lR = lR_calcs(length, cP, lcb)
+    formFactor = formFactor_calcs(c13, c12, lR, beam, cP, lcb)
+    S = S_calcs(length, T, beam, cB, cM, cWP, aBT)
+    rF = rF_calcs(rho, cF, S, v)
+    rAPP = rAPP_calcs(rho, v, sAPP, cF, flowAppendage)
+    c7 = c7_calcs(beam, length)
+    #influence of bulbous bow on wave resistance
+    c3 = c3_calcs(aBT, beam, TF, T, hB)
+    c2 = c2_calcs(c3, aBT)
+    c5 = c5_calcs(aT, beam, T, cM)
+    #moulded displacement volume (nabla)
+    nabla = nabla_calcs(cB, length, beam, T)
+    iE = iE_calcs(length, beam, cWP, cP, lcb, lR, nabla)
+    c1 = c1_calcs(c7, T, beam, iE)
+    #Froude Number, based on waterline length
+    Fn = froude_length_calcs(v, length, G)
+    lambda_w = lamdba_calcs(length, beam, cP)
+    c16 = c16_calcs(cP)
+    m1 = m1_calcs(length, T, nabla, beam, c16)
+    c15 = c15_calcs(length, nabla)
+    m2 = m2_calcs(c15, cP, Fn)
+    rW = rW_calcs(c1, c2, c5, nabla, rho, G, m1, Fn, m2, lambda_w)
+    rB = rB_calcs(aBT, hB, G, TF, v)
+    rTR = rTR_calcs(aT, v, G, beam, cWP, rho)
+    cA = cA_calcs(TF, length, cB, c2)
+    rA = rA_calcs(v, cA, rho, S)
+    rTotal = rTotal_calcs(rF, formFactor, rAPP, rW, rB, rTR, rA)
+    #total resistance deviates 4% from Holthrop + Mennen's example (underestimation of resistance)
+    print(f"Frictional Resistance (newtons): {rF * formFactor}")
+    print(f"Wave Resistance (newtons): {rW}")
+    print(f"Total Resistance (newtons): {rTotal}")
+    P_E = externalPower_calcs(rTotal, v)
+    #power deviates ~2% from Holthrop + Mennen's example (underestimation)
+    print(f"Effective Power (watts): {P_E}")
+    cV = cV_calcs(formFactor, cF, cA)
+    #SHAFT POWER CALCULATIONS
+    c8 = c8_calcs(beam, T, S, length, dProp)
+    c9 = c9_calcs(c8)
+    c10 = c10_calcs(beam, length)
+    c11 = c11_calcs(T, dProp)
+    cP1 = cP1_calcs(cP, lcb)
+
+    print(f"cP1: {cP1}")
+    print(f"c11: {c11}")
+    print(f"c9: {c9}")
+    print(f"cV: {cV}")
+    print(f"cStern: {cStern}")
+    c20 = c20_calcs(cStern)
+    c19 = c19_calcs(cB, cP, cM)
+    w, td = wt_calcs(c9, c20, cV, length, T, c11, cP1, beam, c19, dProp, cStern, cB, numPropellers)
+    K = K_calcs(numPropellers)
+    hShaft = hShaft_calcs(T, propKeelClearance, dProp)
+    pitch = pitch_calcs(v, w, n)
+    propThrust = propThrust_calcs(rTotal, td)
+    bladeAreaRatio = bladeAreaRatio_calcs(K, numBlades, propThrust, dProp, rho, G, hShaft)
+    print(f"w: {w}")
+    print(f"t: {td}")
+
+    print(f"Effective Thrust (newtons): {propThrust}")
+    eta_R = etaR_calcs(numPropellers, bladeAreaRatio, cP, lcb, pitch, dProp)
+    #chord length
+    c_075 = chordLength_calcs(bladeAreaRatio, dProp, numBlades)
+    tc_075 = tc_calcs(numBlades, c_075)
+
+    #difference in drag coefficients of the profile section
+    delta_CD = deltaCD_calcs(tc_075, c_075, k_p)
+
+    print(f"bladeAreaRatio: {bladeAreaRatio}")
+    print(f"c_075: {c_075}")
+    print(f"tc_075: {tc_075}")
+    print(f"k_p: {k_p}")
+    print(f"delta_CD: {delta_CD}")
+    K_T_B = ktb_calcs(propThrust, rho, dProp, n)
+    K_T = kt_calcs(K_T_B, delta_CD, pitch, c_075, numBlades, dProp)
+    J = j_calcs(v, w, td, n, dProp)
+    cTH = cTH_calcs(K_T, J)
+    eta_o = etao_calcs(cTH, trueEfficiencyCoefficient = 0.7)
+    shaftPower = shaftPowerCalcs(P_E, eta_R, eta_o, eta_S, td, w)
+    return shaftPower
+
+print(HoltropMennenPowerCalculation(100, 20, 5, 5000, 14))
 
 #sources: overall calculation (Holthrop and Mennen 1978): https://repository.tudelft.nl/islandora/object/uuid:ee370fed-4b4f-4a70-af77-e14c3e692fd4/datastream/OBJ/download
 #coefficient of friction + reynolds number calculation: https://repository.tudelft.nl/islandora/object/uuid%3A16d77473-7043-4099-a8c6-bf58f555e2e7
