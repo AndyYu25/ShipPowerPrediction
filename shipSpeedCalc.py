@@ -347,18 +347,25 @@ print(f"Frictional Resistance (newtons): {rF * formFactor}")
 print(f"Wave Resistance (newtons): {rW}")
 print(f"Total Resistance (newtons): {rTotal}")
 
-#power = force * velocity
-#this is the external power applied to the ship as a whole, NOT the shaft power, which is the power applied to the shafts
-#effective power
-P_E = rTotal * v
+def externalPower_calcs(rTotal, v)->float:
+    """
+    calculates the external/effective power applied to the ship as a whole, NOT the shaft power, which is the power applied to the shafts
+    based on the formula that power equals force * velocity
+    """
+    return rTotal * v
 
+P_E = externalPower_calcs(rTotal, v)
 #power deviates ~2% from Holthrop + Mennen's example (underestimation)
 print(f"Effective Power (watts): {P_E}")
 
+def cV_calcs(formFactor, cF, cA)->float:
+    """
+    Calculates the viscious coefficient, which factors in the friction of the water on the ship as well as
+    the influence of hull form on viscous pressure drag.
+    """
+    return formFactor * cF + cA
 
-########## VISCIOUS COEFFICIENT CALCS (C_V) ###############
-
-cV = formFactor * cF + cA
+cV = cV_calcs(formFactor, cF, cA)
 
 
 ########## PROPELLER-VARIABLE CALCS (w, t, eta_R) ###############
@@ -367,28 +374,56 @@ cV = formFactor * cF + cA
 #so anything after that is assumed to have similar efficiency to a twin-screw arrangement
 #also assume aft draught (T_A)is the same as the amidships draught (T)
 
-if beam / T < 5:
-    c8 = beam * S / (length * dProp * T)
-else:
-    c8 = S * (7 * beam / T - 25) / (length * dProp * (beam / T - 3))
+def c8_calcs(beam, T, S, length, dProp)->float:
+    """
+    calculate the propeller-variable coefficient c8
+    """
+    if beam / T < 5:
+        return beam * S / (length * dProp * T)
+    else:
+        return S * (7 * beam / T - 25) / (length * dProp * (beam / T - 3))
 
-if c8 < 28:
-    c9 = c8
-else:
-    c9 = 32 - 16 / (c8 - 24)
+c8 = c8_calcs(beam, T, S, length, dProp)
 
-if length / beam > 5.2:
-    c10 = beam / length
-else:
-    c10 = 0.25 - 0.003328402 * (beam / length - 0.134615385)
+def c9_calcs(c8)->float:
+    """
+    calculate the propeller-variable coefficient c9
+    """
+    if c8 < 28: return c8
+    else:
+        return 32 - 16 / (c8 - 24)
+    
+c9 = c9_calcs(c8)
 
+def c10_calcs(beam, length)->float:
+    """
+    calculate the regression-derived propeller-variable coefficient c10
+    """
+    if length / beam > 5.2:
+        return beam / length
+    else:
+        return 0.25 - 0.003328402 * (beam / length - 0.134615385)
 
-if T/dProp < 2:
-    c11 = T / dProp
-else:
-    c11 = 0.0833333 * (T / dProp) ** 3 + 1.33333
+c10 = c10_calcs(beam, length)
 
-cP1 = 1.45 * cP - 0.315 - 0.0225 * lcb
+def c11_calcs(T, dProp)->float:
+    """
+    calculate the regression-derived propeller-variable coefficient c11 based on the draft (at the rear of the ship) and the propeller diameter
+    """
+    if T/dProp < 2:
+        return T / dProp
+    else:
+        return 0.0833333 * (T / dProp) ** 3 + 1.33333
+
+c11 = c11_calcs(T, dProp)
+
+def cP1_calcs(cP, lcb)->float:
+    """
+    Calculate the regression-derived coefficient cP1, a prismatic coefficient variable accounting for longitudinal centre of bouyancy
+    """
+    return 1.45 * cP - 0.315 - 0.0225 * lcb
+
+cP1 = cP1_calcs(cP, lcb)
 
 print(f"cP1: {cP1}")
 print(f"c11: {c11}")
@@ -396,27 +431,44 @@ print(f"c9: {c9}")
 print(f"cV: {cV}")
 print(f"cStern: {cStern}")
 
-c20 = 1.0 + 0.015 * cStern
+def c20_calcs(cStern)->float:
+    """
+    Calculate the regression-derived coefficient c20 based on the stern coefficient
+    """
+    return 1.0 + 0.015 * cStern
 
-if cP < 0.7:
-    c19 = 0.12997 / (0.95 - cB) - 0.11056 / (0.95 - cP)
-else:
-    c19 = 0.18567 / (1.3571 - cM) - 0.71276 + 0.38648 * cP
+c20 = c20_calcs(cStern)
 
+def c19_calcs(cB, cP, cM)->float:
+    """
+    Calculate the regression-derived coefficient c19 based on the hull form coefficients of the ship
+    """
+    if cP < 0.7:
+        return 0.12997 / (0.95 - cB) - 0.11056 / (0.95 - cP)
+    else:
+        return 0.18567 / (1.3571 - cM) - 0.71276 + 0.38648 * cP
 
+c19 = c19_calcs(cB, cP, cM)
 
-if numPropellers == 1:
-    #assume conventional stern (not an open stern)
-    #not using revised method
+def wt_calcs()->float:
+    """
+    Calculates the wake fraction (w) and thrust deduction coefficients (t).
+    """
+    if numPropellers == 1:
+        #assume conventional stern (not an open stern)
+        #not using revised method
 
-    #use revision for calculating single screw conventional stern, Holtrop 1984
-    w = c9 * c20 * cV * (length / T) * (0.050776 + 0.93405 * c11 * (cV / (1 - cP1))) + (0.27915 * c20 * math.sqrt(beam / (length * (1 - cP1)))) + c19 * c20
-    #still use Holtrop 1978 calculation
-    t = 0.001979 * length / (beam - beam * cP1) + 1.0585 * c10 
-    - 0.00524 - 0.0148 * dProp ** 2 / (beam * T) + 0.0015 * cStern
-else: #2 propellers (extrapolated to 2+ propellers)
-    w = 0.3095 * cB + 10 * cV * cB - 0.23 * dProp / math.sqrt(beam * T)
-    t = 0.325 * cB - 0.1885 * dProp / math.sqrt(beam * T)
+        #use revision for calculating single screw conventional stern, Holtrop 1984
+        w = c9 * c20 * cV * (length / T) * (0.050776 + 0.93405 * c11 * (cV / (1 - cP1))) + (0.27915 * c20 * math.sqrt(beam / (length * (1 - cP1)))) + c19 * c20
+        #still use Holtrop 1978 calculation
+        td = 0.001979 * length / (beam - beam * cP1) + 1.0585 * c10 
+        - 0.00524 - 0.0148 * dProp ** 2 / (beam * T) + 0.0015 * cStern
+    else: #2 propellers (extrapolated to 2+ propellers)
+        w = 0.3095 * cB + 10 * cV * cB - 0.23 * dProp / math.sqrt(beam * T)
+        td = 0.325 * cB - 0.1885 * dProp / math.sqrt(beam * T)
+    return w, td
+
+#w, td = 
 
 
 ########## BLADE AREA RATIO (A_E/A_O) CALCS ###############
@@ -440,7 +492,7 @@ pitch = v * (1 - w) / n
 #effective thrust = total resistance
 #effective thrust = prop thrust * thrust deduction coefficienct (1 - t)
 # prop thrust = total resistance / thrust deduction coefficient
-propThrust = rTotal / (1 - t)
+propThrust = rTotal / (1 - td)
 
 
 #original equation: bladeAreaRatio = K + (1.3 + 0.3 * Z) * thrust / (dProp ** 2 * (p_o + rho * G * h - p_v))
@@ -448,7 +500,7 @@ propThrust = rTotal / (1 - t)
 bladeAreaRatio = K + (1.3 + 0.3 * numBlades) * propThrust / (dProp ** 2 * (99047 + rho * G * hShaft))
 
 print(f"w: {w}")
-print(f"t: {t}")
+print(f"t: {td}")
 
 print(f"Effective Thrust (newtons): {propThrust}")
 
@@ -496,7 +548,7 @@ K_T = K_T_B + delta_CD * 0.3 * (pitch * c_075 * numBlades) / dProp ** 2
 #K_Q = K_Q_B - delta_CD * 0.25 * (c_075 * numBlades) / dProp
 
 #advance ratio
-J = v * (1 - w * t) / (n * dProp)
+J = v * (1 - w * td) / (n * dProp)
 
 #give up, can't figure way to derive torque
 #eta_o = J * K_T /(2 * math.pi * K_Q)
@@ -516,7 +568,7 @@ eta_o *= 0.7
 
 eta_S = 0.99 #coefficient ideal conditions (completely calm water, 15 degrees saltwater, clean hull + propeller)
 
-shaftPower = P_E / (eta_R * eta_o * eta_S * (1 - t)/(1 - w))
+shaftPower = P_E / (eta_R * eta_o * eta_S * (1 - td)/(1 - w))
 
 print(f"Required Shaft Power (watts) {shaftPower}")
 
