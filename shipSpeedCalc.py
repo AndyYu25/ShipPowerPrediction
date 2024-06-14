@@ -47,6 +47,10 @@ TF = T
 G = 9.81 #acceleration due to gravity (m/s^2)
 rho  = 1025  #density of fluid (salt water in this case) kg / m^3
 KV = 11.8987e-7 #kinematic viscoscity (m^2/s). Default value of 11.8987e-7 for water at 16 celsius
+k_p = 0.00003 #propeller roughness (for 1980s props, may be higher with fouled or older propellers, but assume 0.00003 for simplicity)
+#eta_s is the sea efficincy coefficient, which accounts for sea currents, water quality, and fouling
+eta_S = 0.99 #coefficient ideal conditions (completely calm water, 15 degrees saltwater, clean hull + propeller)
+
 
 ########## APPROXIMATED PARAMETERS ###############
 
@@ -542,19 +546,30 @@ eta_R = etaR_calcs(numPropellers, bladeAreaRatio, cP, lcb, pitch, dProp)
 
 ########## OPEN WATER PROPELLER EFFICIENCY CALCS (eta_o) ###############
 
+def chordLength_calcs(bladeAreaRatio, dProp, numBlades)->float:
+    """
+    calculate c_0.75, or the chord length of the propeller
+    """
+    return 2.073 * (bladeAreaRatio) * dProp / numBlades
 #chord length
-c_075 = 2.073 * (bladeAreaRatio) * dProp / numBlades
+c_075 = chordLength_calcs(bladeAreaRatio, dProp, numBlades)
 
-#thickness-chord length ratio
-tc_075 = (0.0185 - 0.00125 * numBlades) / c_075
+def tc_calcs(numBlades, c_075)->float:
+    """
+    returns the thickness-chord length ratio of the propeller
+    """
+    return (0.0185 - 0.00125 * numBlades) / c_075
 
+tc_075 = tc_calcs(numBlades, c_075)
 
-
-#propeller roughness (for 1980s props, may be higher with fouled or older propellers, but assume 0.00003 for simplicity)
-k_p = 0.00003
+def deltaCD_calcs(tc_075, c_075, k_p)->float:
+    """
+    Calculates the different in drag coefficients of the hull profile section
+    """
+    return (2 + 4 * tc_075) * (0.003605 - (1.89 + 1.62 * math.log(c_075 / k_p)) ** -2.5)
 
 #difference in drag coefficients of the profile section
-delta_CD = (2 + 4 * tc_075) * (0.003605 - (1.89 + 1.62 * math.log(c_075 / k_p)) ** -2.5)
+delta_CD = deltaCD_calcs(tc_075, c_075, k_p)
 
 print(f"bladeAreaRatio: {bladeAreaRatio}")
 print(f"c_075: {c_075}")
@@ -562,41 +577,70 @@ print(f"tc_075: {tc_075}")
 print(f"k_p: {k_p}")
 print(f"delta_CD: {delta_CD}")
 
-#ITTC 1978 formulas
-K_T_B = propThrust / (rho * dProp ** 4 * n ** 2)
+
+def ktb_calcs(propThrust, rho, dProp, n)->float:
+    """
+    Calculates the thrust coefficient of a model (K_T_B or K_TM) based on the ITTC 1978 specification formula.
+
+
+    """
+
+    #ITTC 1978 formulas
+    return propThrust / (rho * dProp ** 4 * n ** 2)
+
+K_T_B = ktb_calcs(propThrust, rho, dProp, n)
+
+def kt_calcs(K_T_B, delta_CD, pitch, c_075, numBlades, dProp)->float:
+    """
+    calculates the ship thrust coefficient using the Holtrop-Mennen formulation
+    """
+    return K_T_B + delta_CD * 0.3 * (pitch * c_075 * numBlades) / dProp ** 2
+
+K_T = kt_calcs(K_T_B, delta_CD, pitch, c_075, numBlades, dProp)
+
+def j_calcs(v, w, td, n, dProp)->float:
+    """
+    calculate the advance ratio of the propeller J
+    """
+    return v * (1 - w * td) / (n * dProp)
+
+J = j_calcs(v, w, td, n, dProp)
+
 #can't figure out torque
 #K_Q_B = propTorque / (rho * dProp ** 5 * n ** 2)
-
-
-#Holthrop & Mennen formulas
-K_T = K_T_B + delta_CD * 0.3 * (pitch * c_075 * numBlades) / dProp ** 2
-
-
-#can't figure out torque
 #K_Q = K_Q_B - delta_CD * 0.25 * (c_075 * numBlades) / dProp
-
-#advance ratio
-J = v * (1 - w * td) / (n * dProp)
-
 #give up, can't figure way to derive torque
 #eta_o = J * K_T /(2 * math.pi * K_Q)
 
-#thrust coefficient (ITTC 1978)
-cTH = (K_T / J ** 2) * 8 / math.pi
+def cTH_calcs(K_T, J)->float:
+    """
+    calculates the thrust coefficient, using the formulas provided by ITTC 1978 proceedings
+    """
+    return (K_T / J ** 2) * 8 / math.pi
 
+cTH = cTH_calcs(K_T, J)
 
-#ideal propeller efficiency / ideal eta_o calculation, is a drastic overestimation of eta_o:
-eta_o = 2 / (1 + math.sqrt(1 + cTH))
+def etao_calcs(cTH, trueEfficiencyCoefficient = 0.7)->float:
+    """
+    calculates eta_o, the propeller efficiency. Use a textbook ideal propeller efficiency formula, which does overestimate propeller efficincy
+    0.7 coefficient derived from fitting to the example ship provided by Holtrop & Mennen
+    """
+    #ideal propeller efficiency / ideal eta_o calculation, is a drastic overestimation of eta_o:
+    eta_o = 2 / (1 + math.sqrt(1 + cTH))
 
-#multiply ideal propeller efficiency by 0.7 to reflect real life conditions
-#still results in optimistic measurements
-eta_o *= 0.7
+    #multiply ideal propeller efficiency by 0.7 to reflect real life conditions
+    #still results in optimistic measurements
+    eta_o *= trueEfficiencyCoefficient
+    return eta_o
+eta_o = etao_calcs(cTH, trueEfficiencyCoefficient = 0.7)
 ########## TOTAL SHAFT POWER CALCS ###############
 
-
-eta_S = 0.99 #coefficient ideal conditions (completely calm water, 15 degrees saltwater, clean hull + propeller)
-
-shaftPower = P_E / (eta_R * eta_o * eta_S * (1 - td)/(1 - w))
+def shaftPowerCalcs(P_E, eta_R, eta_o, eta_S, td, w)->float:
+    """
+    Calculates the required shaft power given the external power and all the efficiency coefficients
+    """
+    return P_E / (eta_R * eta_o * eta_S * (1 - td)/(1 - w))
+shaftPower = shaftPowerCalcs(P_E, eta_R, eta_o, eta_S, td, w)
 
 print(f"Required Shaft Power (watts) {shaftPower}")
 
