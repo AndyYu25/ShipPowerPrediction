@@ -1,5 +1,5 @@
 import math
-
+import csv
 
 
 ########## FRICTIONAL RESISTANCE (R_F) CALCS ###############
@@ -9,7 +9,6 @@ def cB_calcs(displacementMass, length, beam, T):
     Return Block coefficient given mass and ship dimensions
     """
     cB = displacementMass / (length * beam * T)
-    print(f"Block Coeffieicnt: {displacementMass / (length * beam * T)}")
     if cB >= 1:
         raise Exception("Block Coefficient >= 1! Check Dimensions!")
     return displacementMass / (length * beam * T)
@@ -350,7 +349,7 @@ def c19_calcs(cB, cP, cM)->float:
 
 
 
-def wt_calcs(c9, c20, cV, length, T, c11, cP1, beam, c19, dProp, cStern, cB, numPropellers)->float:
+def wt_calcs(c9, c20, cV, length, T, c11, cP1, beam, c19, dProp, cStern, cB, numPropellers, c10)->float:
     """
     Calculates the wake fraction (w) and thrust deduction coefficients (t).
     """
@@ -513,7 +512,7 @@ def shaftPowerCalcs(P_E, eta_R, eta_o, eta_S, td, w)->float:
 def HoltropMennenPowerCalculation(length, beam, T, displacementMass, v,
                                   lcb = 0, cM = 0.95, sAPP = 0, cWP = 0.7, aBT = 0,
                                   hB = 4, aT = 0, numPropellers = 2, dProp = 3.5,
-                                  numBlades = 3, n = 3, propKeelClearance = 2):
+                                  numBlades = 3, n = 3, propKeelClearance = 0.2):
     """
     Full calculation of resistance and shaft power. length, beam, draft, displacement, and velocity are required, all other params are optional.
     All units are in metric
@@ -594,12 +593,8 @@ def HoltropMennenPowerCalculation(length, beam, T, displacementMass, v,
     rA = rA_calcs(v, cA, rho, S)
     rTotal = rTotal_calcs(rF, formFactor, rAPP, rW, rB, rTR, rA)
     #total resistance deviates 4% from Holthrop + Mennen's example (underestimation of resistance)
-    print(f"Frictional Resistance (newtons): {rF * formFactor}")
-    print(f"Wave Resistance (newtons): {rW}")
-    print(f"Total Resistance (newtons): {rTotal}")
     P_E = externalPower_calcs(rTotal, v)
     #power deviates ~2% from Holthrop + Mennen's example (underestimation)
-    print(f"Effective Power (watts): {P_E}")
     cV = cV_calcs(formFactor, cF, cA)
     #SHAFT POWER CALCULATIONS
     c8 = c8_calcs(beam, T, S, length, dProp)
@@ -607,24 +602,14 @@ def HoltropMennenPowerCalculation(length, beam, T, displacementMass, v,
     c10 = c10_calcs(beam, length)
     c11 = c11_calcs(T, dProp)
     cP1 = cP1_calcs(cP, lcb)
-
-    print(f"cP1: {cP1}")
-    print(f"c11: {c11}")
-    print(f"c9: {c9}")
-    print(f"cV: {cV}")
-    print(f"cStern: {cStern}")
     c20 = c20_calcs(cStern)
     c19 = c19_calcs(cB, cP, cM)
-    w, td = wt_calcs(c9, c20, cV, length, T, c11, cP1, beam, c19, dProp, cStern, cB, numPropellers)
+    w, td = wt_calcs(c9, c20, cV, length, T, c11, cP1, beam, c19, dProp, cStern, cB, numPropellers, c10)
     K = K_calcs(numPropellers)
     hShaft = hShaft_calcs(T, propKeelClearance, dProp)
     pitch = pitch_calcs(v, w, n)
     propThrust = propThrust_calcs(rTotal, td)
     bladeAreaRatio = bladeAreaRatio_calcs(K, numBlades, propThrust, dProp, rho, G, hShaft)
-    print(f"w: {w}")
-    print(f"t: {td}")
-
-    print(f"Effective Thrust (newtons): {propThrust}")
     eta_R = etaR_calcs(numPropellers, bladeAreaRatio, cP, lcb, pitch, dProp)
     #chord length
     c_075 = chordLength_calcs(bladeAreaRatio, dProp, numBlades)
@@ -632,12 +617,6 @@ def HoltropMennenPowerCalculation(length, beam, T, displacementMass, v,
 
     #difference in drag coefficients of the profile section
     delta_CD = deltaCD_calcs(tc_075, c_075, k_p)
-
-    print(f"bladeAreaRatio: {bladeAreaRatio}")
-    print(f"c_075: {c_075}")
-    print(f"tc_075: {tc_075}")
-    print(f"k_p: {k_p}")
-    print(f"delta_CD: {delta_CD}")
     K_T_B = ktb_calcs(propThrust, rho, dProp, n)
     K_T = kt_calcs(K_T_B, delta_CD, pitch, c_075, numBlades, dProp)
     J = j_calcs(v, w, td, n, dProp)
@@ -646,7 +625,33 @@ def HoltropMennenPowerCalculation(length, beam, T, displacementMass, v,
     shaftPower = shaftPowerCalcs(P_E, eta_R, eta_o, eta_S, td, w)
     return shaftPower
 
-print(HoltropMennenPowerCalculation(100, 20, 5, 5000, 14))
+def main():
+    with open("HoltropMennenTest.csv", 'r') as csvfile:
+        # creating a csv reader object
+        csvreader = csv.reader(csvfile)
+        fields = next(csvreader)
+        for row in csvreader:
+            for idx in range(1, 14): 
+                if row[idx] != '': row[idx] = float(row[idx].replace(',', ''))
+            name, length, beam, draft, displacement, speed, numShafts, numBlades = row[0], row[2], row[3], row[4], row[5], row[9], row[10], row[11]
+            speed /= 1.944
+            if row[7] != '': cM = row[7]
+            else: cM = 0.95
+            if row[8] != '': cWP = row[8]
+            else: cWP = 0.7
+            if row[12] != '': dProp = row[12]
+            else: dProp = 3.5
+            if row[13] != '': propSpeed = row[13]
+            else: propSpeed = 3
+            shaftPower = HoltropMennenPowerCalculation(length, beam, draft, displacement, speed, cM = cM, cWP = cWP,
+                                numPropellers = numShafts, dProp = dProp,
+                                numBlades = numBlades, n = propSpeed)
+            print(f"{name}: {round(shaftPower/1000)}")
+            
+
+
+if __name__ == "__main__":
+    main()
 
 #sources: overall calculation (Holthrop and Mennen 1978): https://repository.tudelft.nl/islandora/object/uuid:ee370fed-4b4f-4a70-af77-e14c3e692fd4/datastream/OBJ/download
 #coefficient of friction + reynolds number calculation: https://repository.tudelft.nl/islandora/object/uuid%3A16d77473-7043-4099-a8c6-bf58f555e2e7
