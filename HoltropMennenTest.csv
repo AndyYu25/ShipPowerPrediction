@@ -1,0 +1,33 @@
+Ship Name,Year LD,"Length (waterline)
+ (meters)","Beam 
+(meters)","Trial Avg.
+Draft (m)","Displacement, 
+trial or standard (mt)",Machinery Tonnage (mt),"Midship Section 
+Coefficient","Waterplane Area 
+Coefficient","Speed, maximum 
+attained (knots)",# Shafts,"# propeller
+ blades","Propeller 
+diameter (m)","Trial Propeller Shaft 
+Speed (hertz/rps)",SHP (at speed trials) (kW),"Calculated SHP 
+(springsharp beta) (kW)","Calculated SHP
+ (python program) (kW)",Error (springsharp),Error (python),Notes,Source
+Invincible,1905,172.82,23.93,7.924,17679,3352.8,,,26.64,4,3,3.4,4.92,34700,46220,,0.331988473,,,Robert's Battlecruisers
+Nevada,1912,177.698,29,8.534,27500,,0.982,0.715,20.9,2,3,4.3434,3.617,19336.998,24469,,0.265398073,,Averaged max speed trials,https://books.google.com/books?id=n3ISAAAAYAAJ&q=U.S.S.+Nevada&pg=PA20#v=snippet&q=U.S.S.%20Nevada&f=false
+Bellerophon,1906,160.32,25.1,8.2,18894,1966.976,,,21.64,4,3,,,"20,012",22448,,0.121726964,,,
+Collingwood/St. Vincent,1907,163.4,25.7,8.5,19711,2014.728,,,21.7,4,3,,,20975,22981,,0.095637664,,,
+Neptune,1908,166.4,25.9,8.7,20000,2407.92,,,21,4,3,,,19000,20207,,0.063526316,,"Using designed speed, not trial speed",
+Indefatigable,1909,179.83,24.4,8.2,19051,3648.456,,,26.89,4,3,3.21,5.255,"41,120",49132,,0.194844358,,,Robert's Battlecruisers
+Colossus,1909,166.11,26.4,8.2,22273,2068.576,,,21,4,3,,,"19,000",22330,,0.175263158,,Using designed speed since trials occurred in storm,
+Lion,1909,213.36,27,8.55,26996,5933.44,,,27.62,4,3,3.7338,4.65,55986.9,63779,,0.1391772,,Use Princess Royal large-propeller 1912 trials,Robert's Battlecruisers
+Ajax,1910,181.9,27.2,8.7,"25,830",,,,21.2,4,3,,,"21,810",24063,,0.103301238,,,
+Queen Mary,1910,213.36,27.2,8.5848,27615,5547.36,,,28.17,4,3,,4.8167,61048.6,70085,,0.148019774,,,Robert's Battlecruisers
+Benbow/Iron Duke,1911,189.8,27.4,9,26519,2621.28,,,21.25,4,3,,,"21,625",24425,,0.129479769,,,
+Tiger,1911,214.57,27.6,8.75,28947,5720.08,,,29.07,4,3,4.1148,4.5833,76959,81718,,0.061838122,,,Robert's Battlecruisers
+Barham/Queen Elizabeth,1912,195,27.6,10.1,"33,113",3750.056,,,23.9,2,3,3.7,,"52,787","43,675",,0.172618258,,,
+Revenge,1913,189.12,27,10.2,"30,060",2540,,,21.9,2,3,,,"31,273",29470,,0.057653567,,,
+Renown,1914,242.01,27.5,8.115,28346,5410.2,,,32.58,2,3,4.1148,4.6933,92893,118017,,0.270461714,,,Robert's Battlecruisers
+Repulse,1915,242.01,27.5,8.56,30378,5750.56,,,31.73,2,3,4.1148,4.5783,87460,111168,,0.27107249,,,Robert's Battlecruisers
+Courageous,1916,239.8,24.7,7.77,22454,2388,,,30.8,4,3,3.5,3.5052,"67,077",80225,,0.196004871,,,
+Hood,1916,262.3,31.8,9.8,45316,5486.4,,,31.89,2,3,4.57,3.4,110486,143242,,0.296471951,,Using trial displacement,Robert's Battlecruisers
+Warspite (rebuild),1934,195,27.6,10.1,"31,822",2336.8,,,23.5,2,3,3.7,,"52,787",40535,,0.232102601,,,
+Nelson,1922,216.41,32.3,9.2,"33,800",1954.784,,,23.6,2,3,,,"34,325",40374,,0.17622724,,,

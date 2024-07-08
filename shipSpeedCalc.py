@@ -191,7 +191,7 @@ def rW_calcs(c1, c2, c5, nabla, rho, G, m1, Fn, m2, lambda_w)->float:
 
 ########## BULBOUS BOW RESISTANCE (R_B) CALCS ###############
 
-def rB_calcs(aBT, hB, G, TF, v)->float:
+def rB_calcs(aBT, hB, G, TF, v, rho)->float:
     """
     calculates the resistance of a bulbous bow given the ship speed and dimensions of the bow
     """
@@ -498,7 +498,7 @@ def etao_calcs(cTH, trueEfficiencyCoefficient = 0.7)->float:
 
     #multiply ideal propeller efficiency by 0.7 to reflect real life conditions
     #still results in optimistic measurements
-    eta_o *= trueEfficiencyCoefficient
+    #eta_o *= trueEfficiencyCoefficient
     return eta_o
 ########## TOTAL SHAFT POWER CALCS ###############
 
@@ -512,7 +512,7 @@ def shaftPowerCalcs(P_E, eta_R, eta_o, eta_S, td, w)->float:
 def HoltropMennenPowerCalculation(length, beam, T, displacementMass, v,
                                   lcb = 0, cM = 0.95, sAPP = 0, cWP = 0.7, aBT = 0,
                                   hB = 4, aT = 0, numPropellers = 2, dProp = 3.5,
-                                  numBlades = 3, n = 3, propKeelClearance = 0.2):
+                                  numBlades = 3, n = 3, propKeelClearance = 0.2, trueEfficiencyCoefficient = 0.7):
     """
     Full calculation of resistance and shaft power. length, beam, draft, displacement, and velocity are required, all other params are optional.
     All units are in metric
@@ -581,6 +581,7 @@ def HoltropMennenPowerCalculation(length, beam, T, displacementMass, v,
     c1 = c1_calcs(c7, T, beam, iE)
     #Froude Number, based on waterline length
     Fn = froude_length_calcs(v, length, G)
+    print(f"Froude Number: {Fn}")
     lambda_w = lamdba_calcs(length, beam, cP)
     c16 = c16_calcs(cP)
     m1 = m1_calcs(length, T, nabla, beam, c16)
@@ -623,6 +624,7 @@ def HoltropMennenPowerCalculation(length, beam, T, displacementMass, v,
     cTH = cTH_calcs(K_T, J)
     eta_o = etao_calcs(cTH, trueEfficiencyCoefficient = 0.7)
     shaftPower = shaftPowerCalcs(P_E, eta_R, eta_o, eta_S, td, w)
+    shaftPower *= 1 / trueEfficiencyCoefficient
     return shaftPower
 
 def main():
@@ -646,7 +648,7 @@ def main():
             shaftPower = HoltropMennenPowerCalculation(length, beam, draft, displacement, speed, cM = cM, cWP = cWP,
                                 numPropellers = numShafts, dProp = dProp,
                                 numBlades = numBlades, n = propSpeed)
-            print(f"{name}: {round(shaftPower/1000)}")
+            print(f"{name}: {round(shaftPower/1000)} kW")
             
 
 
@@ -660,3 +662,4 @@ if __name__ == "__main__":
 #calculating open water propeller efficiency (eta_o): ITTC 1978 https://ittc.info/media/1834/75-02-03-014.pdf
 #open water propeller efficiency: https://apps.dtic.mil/sti/tr/pdf/ADA132414.pdf
 #open water propeller efficiency: https://www.man-es.com/docs/default-source/document-sync/basic-principles-of-ship-propulsion-eng.pdf
+#Wagignen B-Series Polynomial
