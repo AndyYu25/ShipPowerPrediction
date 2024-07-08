@@ -588,7 +588,7 @@ def HoltropMennenPowerCalculation(length, beam, T, displacementMass, v,
     c15 = c15_calcs(length, nabla)
     m2 = m2_calcs(c15, cP, Fn)
     rW = rW_calcs(c1, c2, c5, nabla, rho, G, m1, Fn, m2, lambda_w)
-    rB = rB_calcs(aBT, hB, G, TF, v)
+    rB = rB_calcs(aBT, hB, G, TF, v, rho)
     rTR = rTR_calcs(aT, v, G, beam, cWP, rho)
     cA = cA_calcs(TF, length, cB, c2)
     rA = rA_calcs(v, cA, rho, S)
