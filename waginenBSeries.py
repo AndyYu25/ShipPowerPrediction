@@ -80,7 +80,7 @@ class WaginenBSeries:
         J: the advance ratio J
         """        
         deltaKQ = 0
-        for row in self.torqueRegressionCoefficients:
+        for row in self.torqueCorrectionCoefficients:
             a_i, b_i, c_i, d_i, e_i, f_i = row
             deltaKQ += a_i * (J ** b_i) * (p/d ** c_i) * (AEA0 ** d_i) * (Z ** e_i) * (math.log10(reynolds - 0.301) ** f_i)
         kQ = self.torqueCoefficient(d, Z, AEA0, p, J) 
@@ -97,7 +97,7 @@ class WaginenBSeries:
         J: the advance ratio J
         """        
         deltaKT = 0
-        for row in self.torqueRegressionCoefficients:
+        for row in self.thrustCorrectionCoefficients:
             a_i, b_i, c_i, d_i, e_i, f_i = row
             deltaKT += a_i * (J ** b_i) * (p/d ** c_i) * (AEA0 ** d_i) * (Z ** e_i) * (math.log10(reynolds - 0.301) ** f_i)
         kT = self.torqueCoefficient(d, Z, AEA0, p, J) 
