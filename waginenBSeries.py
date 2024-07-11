@@ -35,7 +35,7 @@ class WaginenBSeries:
             #check array dimensions are correct, raise exception if not
             if len(self.torqueCorrectionCoefficients) != 13 or len(self.thrustCorrectionCoefficients[0]) != 6:
                 raise Exception("WaginenBSeriesThrust.csv improperly modified or corrupted! Try reinstalling or manually reentering coefficient values.")
-    def thrustCoefficient(self, D: float, Z: float, AEA0: float, PD: float, J: float)->float:
+    def thrustCoefficient(self, d: float, Z: float, AEA0: float, p: float, J: float)->float:
         """
         Calculates the propeller thrust coefficient K_T of a propeller given basic propeller characteristics.
         These values are normalized for a Reynolds Number of 0.75. 
@@ -47,9 +47,9 @@ class WaginenBSeries:
         J: the advance ratio J
         """
         kT = 0
-        for row in self.torqueRegressionCoefficients:
+        for row in self.thrustRegressionCoefficients:
             a_i, b_i, c_i, d_i, e_i = row
-            kT += a_i * (J ** b_i) * (PD ** c_i) * (AEA0 ** d_i) * (Z ** e_i)
+            kT += a_i * (J ** b_i) * ((p / d) ** c_i) * (AEA0 ** d_i) * (Z ** e_i)
         return kT
     def torqueCoefficient(self, d: float, Z: int, AEA0: float, p: float, J: float)->float:
         """
@@ -66,7 +66,7 @@ class WaginenBSeries:
         kQ = 0
         for row in self.torqueRegressionCoefficients:
             a_i, b_i, c_i, d_i, e_i = row
-            kQ += a_i * (J ** b_i) * (p/d ** c_i) * (AEA0 ** d_i) * (Z ** e_i)
+            kQ += a_i * (J ** b_i) * ((p / d) ** c_i) * (AEA0 ** d_i) * (Z ** e_i)
         return kQ
     def torqueCoefficientCorrected(self, d: float, Z: int, AEA0: float, p: float, J: float, reynolds: float)->float:
         """
@@ -82,7 +82,7 @@ class WaginenBSeries:
         deltaKQ = 0
         for row in self.torqueCorrectionCoefficients:
             a_i, b_i, c_i, d_i, e_i, f_i = row
-            deltaKQ += a_i * (J ** b_i) * (p/d ** c_i) * (AEA0 ** d_i) * (Z ** e_i) * (math.log10(reynolds - 0.301) ** f_i)
+            deltaKQ += a_i * (J ** b_i) * ((p/d) ** c_i) * (AEA0 ** d_i) * (Z ** e_i) * (math.log10(reynolds - 0.301) ** f_i)
         kQ = self.torqueCoefficient(d, Z, AEA0, p, J) 
         return kQ + deltaKQ
     def thrustCoefficientCorrected(self, d: float, Z: int, AEA0: float, p: float, J: float, reynolds: float)->float:
@@ -99,6 +99,12 @@ class WaginenBSeries:
         deltaKT = 0
         for row in self.thrustCorrectionCoefficients:
             a_i, b_i, c_i, d_i, e_i, f_i = row
-            deltaKT += a_i * (J ** b_i) * (p/d ** c_i) * (AEA0 ** d_i) * (Z ** e_i) * (math.log10(reynolds - 0.301) ** f_i)
+            deltaKT += a_i * (J ** b_i) * ((p/d) ** c_i) * (AEA0 ** d_i) * (Z ** e_i) * (math.log10(reynolds - 0.301) ** f_i)
         kT = self.torqueCoefficient(d, Z, AEA0, p, J) 
         return kT + deltaKT
+
+bSeries = WaginenBSeries()
+p = 0.7
+d = 1
+print(bSeries.thrustCoefficient(d, 4, 0.55, p, 0))
+print(bSeries.torqueCoefficient(d, 4, 0.55, p, 0))
