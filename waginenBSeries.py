@@ -10,28 +10,28 @@ class WaginenBSeries:
         #LOAD THRUST COEFFICIENTS
         with open(os.path.join("WaginenBSeries", "Torque.csv"), 'r') as csvfile:
             csvreader = csv.reader(csvfile)
-            self.torqueRegressionCoefficients = [i for i in csvreader]
+            self.torqueRegressionCoefficients = [[float(j) for j in i] for i in csvreader]
             #check array dimensions are correct, raise exception if not
             if len(self.torqueRegressionCoefficients) != 47 or len(self.torqueRegressionCoefficients[0]) != 5:
                 raise Exception("WaginenBSeries\\torque.csv improperly modified or corrupted! Try reinstalling or manually reentering coefficient values.")
         #LOAD TORQUE COEFFICIENTS    
         with open(os.path.join("WaginenBSeries", "Thrust.csv"), 'r') as csvfile:
             csvreader = csv.reader(csvfile)
-            self.thrustRegressionCoefficients = [i for i in csvreader]
+            self.thrustRegressionCoefficients = [[float(j) for j in i] for i in csvreader]
             #check array dimensions are correct, raise exception if not
             if len(self.thrustRegressionCoefficients) != 39 or len(self.thrustRegressionCoefficients[0]) != 5:
                 raise Exception("WaginenBSeriesThrust.csv improperly modified or corrupted! Try reinstalling or manually reentering coefficient values.")
         #LOAD THRUST CORRECTION COEFFICIENTS
         with open(os.path.join("WaginenBSeries", "ThrustCorrection.csv"), 'r') as csvfile:
             csvreader = csv.reader(csvfile)
-            self.thrustCorrectionCoefficients = [i for i in csvreader]
+            self.thrustCorrectionCoefficients = [[float(j) for j in i] for i in csvreader]
             #check array dimensions are correct, raise exception if not
             if len(self.thrustCorrectionCoefficients) != 9 or len(self.thrustCorrectionCoefficients[0]) != 6:
                 raise Exception("WaginenBSeriesThrust.csv improperly modified or corrupted! Try reinstalling or manually reentering coefficient values.")
         #LOAD TORQUE CORRECTION COEFFICIENTS
         with open(os.path.join("WaginenBSeries", "TorqueCorrection.csv"), 'r') as csvfile:
             csvreader = csv.reader(csvfile)
-            self.torqueCorrectionCoefficients = [i for i in csvreader]
+            self.torqueCorrectionCoefficients = [[float(j) for j in i] for i in csvreader]
             #check array dimensions are correct, raise exception if not
             if len(self.torqueCorrectionCoefficients) != 13 or len(self.thrustCorrectionCoefficients[0]) != 6:
                 raise Exception("WaginenBSeriesThrust.csv improperly modified or corrupted! Try reinstalling or manually reentering coefficient values.")
