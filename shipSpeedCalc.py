@@ -499,7 +499,7 @@ def etao_calcs(cTH, trueEfficiencyCoefficient = 0.7)->float:
     #multiply ideal propeller efficiency by 0.7 to reflect real life conditions
     #still results in optimistic measurements
     #eta_o *= trueEfficiencyCoefficient
-    return eta_o
+    return trueEfficiencyCoefficient * eta_o
 ########## TOTAL SHAFT POWER CALCS ###############
 
 def shaftPowerCalcs(P_E, eta_R, eta_o, eta_S, td, w)->float:
@@ -581,7 +581,7 @@ def HoltropMennenPowerCalculation(length, beam, T, displacementMass, v,
     c1 = c1_calcs(c7, T, beam, iE)
     #Froude Number, based on waterline length
     Fn = froude_length_calcs(v, length, G)
-    print(f"Froude Number: {Fn}")
+    #print(f"Froude Number: {Fn}")
     lambda_w = lamdba_calcs(length, beam, cP)
     c16 = c16_calcs(cP)
     m1 = m1_calcs(length, T, nabla, beam, c16)
@@ -622,9 +622,9 @@ def HoltropMennenPowerCalculation(length, beam, T, displacementMass, v,
     K_T = kt_calcs(K_T_B, delta_CD, pitch, c_075, numBlades, dProp)
     J = j_calcs(v, w, td, n, dProp)
     cTH = cTH_calcs(K_T, J)
-    eta_o = etao_calcs(cTH, trueEfficiencyCoefficient = 0.7)
+    eta_o = etao_calcs(cTH, trueEfficiencyCoefficient)
     shaftPower = shaftPowerCalcs(P_E, eta_R, eta_o, eta_S, td, w)
-    shaftPower *= 1 / trueEfficiencyCoefficient
+    #shaftPower *= 1 / trueEfficiencyCoefficient
     return shaftPower
 
 def main():
@@ -633,23 +633,26 @@ def main():
         csvreader = csv.reader(csvfile)
         fields = next(csvreader)
         for row in csvreader:
-            for idx in range(1, 14): 
+            if row == []:
+                break
+            for idx in range(1, 16): 
                 if row[idx] != '': row[idx] = float(row[idx].replace(',', ''))
-            name, length, beam, draft, displacement, speed, numShafts, numBlades = row[0], row[2], row[3], row[4], row[5], row[9], row[10], row[11]
-            speed /= 1.944
+            name, length, beam, draft, displacement, speed, numShafts, numBlades = row[0], row[2], row[3], row[4], row[5], row[10], row[12], row[13]
+            #speed /= 1.944
             if row[7] != '': cM = row[7]
             else: cM = 0.95
             if row[8] != '': cWP = row[8]
             else: cWP = 0.7
-            if row[12] != '': dProp = row[12]
+            if row[14] != '': dProp = row[14]
             else: dProp = 3.5
-            if row[13] != '': propSpeed = row[13]
+            if row[15] != '': propSpeed = row[15]
             else: propSpeed = 3
             shaftPower = HoltropMennenPowerCalculation(length, beam, draft, displacement, speed, cM = cM, cWP = cWP,
                                 numPropellers = numShafts, dProp = dProp,
                                 numBlades = numBlades, n = propSpeed)
             print(f"{name}: {round(shaftPower/1000)} kW")
-            
+
+               
 
 
 if __name__ == "__main__":
