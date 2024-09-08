@@ -27,7 +27,7 @@ def cP_calcs(cB, cM):
     """
     return cB/cM
 
-def cF_calcs(length, v, KV):
+def cF_calcs(length, v, KV = 11.8987e-7):
     """
     Calculates the coefficient of friction based on length, velocity, and kinematic viscosity of water
     """
@@ -35,7 +35,7 @@ def cF_calcs(length, v, KV):
     reynolds = length * v / KV #10e6 is unit converions from mm^2 to m^2
     return 0.075 / (math.log10(reynolds) - 2) ** 2
 
-def c12_calcs(T, length): #correct
+def c12_calcs(T, length):
     """
     returns the c12 coefficient given the draft and length
     """
@@ -141,9 +141,9 @@ def c1_calcs(c7, T, beam, iE)->float:
     """
     return 2223105 * c7 ** 3.78613 * (T / beam) ** 1.07961 * (90 - iE) ** -1.37565
 
-def froude_length_calcs(v, length, G)->float:
+def froude_length_calcs(v, length, G = 9.81)->float:
     """
-    calculates the froude number given the velocity and waterline length
+    calculates the froude number given the velocity, gravity, and waterline length
     """
     return v / math.sqrt(length * G)
 
@@ -527,7 +527,7 @@ def HoltropMennenPowerCalculation(length, beam, T, displacementMass, v,
         Tegethoff (1876) was 0.82, Minas Geraes was 0.967, high speed destroyer should have 0.8. Default is 0.95
     sAPP: wetted area appendage. Appendages are any underwater structures protruding from the hull, like the rudder and propellors. Default is 0 if unsure.
     cWP: water plane coefficient (waterplane area / beam * length). cWP of 1 is a rectangle. Larger ships have a slightly lower cWP than smaller ones.
-        Farraguts were 0.744, post-WWII destroyers were 0.68, Bismarck was 0.66, Minas Geraes was 7.12. Default of 0.7.
+        Farraguts were 0.744, post-WWII destroyers were 0.68, Bismarck was 0.66, Minas Geraes was 0.712. Default of 0.7.
     aBT: cross-sectional area of the bulbous bow in square meters. 0 for non bulbous bow (default)
     hB: height of the center of the bulbous bow above keel line in meters. default of 4, not used if aBT = 0
     aT: immersed area of the transverse area of the transom at zero speed in square meters. Default is 0 for no tramson stern
