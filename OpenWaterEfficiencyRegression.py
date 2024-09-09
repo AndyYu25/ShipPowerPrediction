@@ -77,38 +77,66 @@ def tecEvaluation(X: list, Y: list, tecWeights:list)->float:
         y_hat = HoltropMennenPowerCalculation(row[0], row[1], row[2], row[3], row[4], numPropellers = row[5], numBlades = row[6],
                                              cM = row[7], cWP = row[8], dProp = row[9], n = row[10], trueEfficiencyCoefficient = trueEfficiencyCoefficient)
         y_hat = y_hat / 1000
-        print(Y[idx], y_hat)
         errorSum += (Y[idx] - y_hat) ** 2
 
     MSE = errorSum / len(X)
     NRMSD = math.sqrt(MSE) / (yMax - yMin)
     return round(NRMSD, 8)
 
-def trueEfficiencyOptimization(X, Y):
+def calculateEfficiencyCoefficient(inputs: list, tecWeights:list):
+    """
+    Calculates the true efficiency coefficient by way of a linear equation using the provided weights.
+    len(inputs) = len(tecWeights) - 1
+    """
+    if len(inputs) != len(tecWeights) - 1:
+        raise Exception("trueEfficiencyCoefficient Dimension mismatch between input and tecWeights!")
+
+def isValidParticle(particle: list, coefficientInputMagnitudes: list):
+    """
+    Check if a particle coordinate is valid.
+    
+    Valid coordinates exist between the range of 0 and 1 for the maximum orders of magnitude input into each value 
+    """
+    return
+
+
+def generateParticle(coefficientInputMagnitudes: list):
+    """
+    Given a list of the input magnitudes, return a list of valid particle coordinates.
+    """
+    #particle = [random.uniform(0, )]
+    return
+
+def trueEfficiencyOptimization(X, Y, numParticles = 100, inertia = 0.5, phi_p = 2, phi_g = 2):
     """
     A function to optimize the trueEfficiencyCoefficient that modifies the ideal open-water effiency to get an accurate eta_o given our data.
 
-    Use a basic particle swarm optimization, with the goal of minimizing
+    Use a basic particle swarm optimization algorithm, with the goal of minimizing the error of the function.
     
-    State Space: 5D space consisting of the parameters of length, beam, draft, displacement, and speed. 
-    Alternate parameters to explore: froude number, block coefficient, nabla (moulded displacement volume)
+    State Space: 5D space consisting of the parameters of length (10e2), beam (10e1), draft (10e0), displacement (10e4), and speed (10e2). 
+    Alternate parameters to explore: froude number (10e-1), block coefficient (10e-1), nabla (moulded displacement volume) (10e4)
     
     Restrictions:  
-    trueEfficiencyCoefficient
+    trueEfficiencyCoefficient cannot exceed 1, since it modifies an already ideal value for the open-water efficiency.
+    The state space for a parameter p is limited to 10e[1-log(avg(p))] as to adhere to the first restriction
+
 
     Minimize the MSE of the predicted shp vs the actual shp with a linear regression
     """
+    #contains the order of magnitude of each coefficient input. See the function description for more info.
+    coefficientInputMagnitudes = [0. ]
+    #randomized initialization 
+    particles = []
+    for i in range(numParticles):
+        particle = []
+        #random value for the random intercept
+        intercept = random.random()
+        #randomized initial length coefficient
     return
 
 def main():
     X, Y = loadCSV()
     trainX, trainY, testX, testY = trainTestSplit(X, Y, testFraction = 0.1)
-    print(len(X), len(X[0]))
-    print(len(Y))
-    print(len(trainX))
-    print(len(testX))
-    print(trainX[0], trainY[0])
-    print(testX[0], testY[0])
     print(tecEvaluation(X, Y, [0.7, 0, 0, 0, 0, 0]))
 
 if __name__ == "__main__":
