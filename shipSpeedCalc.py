@@ -595,6 +595,7 @@ def HoltropMennenPowerCalculation(length, beam, T, displacementMass, v,
     rTotal = rTotal_calcs(rF, formFactor, rAPP, rW, rB, rTR, rA)
     #total resistance deviates 4% from Holthrop + Mennen's example (underestimation of resistance)
     P_E = externalPower_calcs(rTotal, v)
+    #print(f"EHP: {round(P_E / 1000)} kW")
     #power deviates ~2% from Holthrop + Mennen's example (underestimation)
     cV = cV_calcs(formFactor, cF, cA)
     #SHAFT POWER CALCULATIONS
@@ -635,21 +636,26 @@ def main():
         for row in csvreader:
             if row == []:
                 break
-            for idx in range(1, 16): 
+            for idx in range(1, 18): 
                 if row[idx] != '': row[idx] = float(row[idx].replace(',', ''))
-            name, length, beam, draft, displacement, speed, numShafts, numBlades = row[0], row[2], row[3], row[4], row[5], row[10], row[12], row[13]
+            name, length, beam, draft, displacement, speed, numShafts, numBlades = row[0], row[2], row[3], row[4], row[5], row[11], row[13], row[14]
             #speed /= 1.944
-            if row[7] != '': cM = row[7]
+            if row[8] != '': cM = row[8]
             else: cM = 0.95
-            if row[8] != '': cWP = row[8]
+            if row[9] != '': cWP = row[9]
             else: cWP = 0.7
-            if row[14] != '': dProp = row[14]
+            if row[15] != '': dProp = row[15]
             else: dProp = 3.5
-            if row[15] != '': propSpeed = row[15]
+            if row[16] == 1.0: 
+                print(f'{name} has bulbous bow!')
+                aBT = 10
+            else: 
+                aBT = 0
+            if row[17] != '': propSpeed = row[17]
             else: propSpeed = 3
             shaftPower = HoltropMennenPowerCalculation(length, beam, draft, displacement, speed, cM = cM, cWP = cWP,
                                 numPropellers = numShafts, dProp = dProp,
-                                numBlades = numBlades, n = propSpeed)
+                                numBlades = numBlades, n = propSpeed, aBT = aBT)
             print(f"{name}: {round(shaftPower/1000)} kW")
 
                
