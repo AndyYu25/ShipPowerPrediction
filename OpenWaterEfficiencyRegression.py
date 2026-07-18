@@ -4,6 +4,7 @@ import csv
 from typing import Union,TypeVar
 import random
 import math
+import pandas as pd
 def loadCSV(filename: str = "HoltropMennenTest.csv")->tuple[list, list]:
     """
     Loads the csv as a list, after stripping the header row
@@ -60,12 +61,13 @@ def trainTestSplit(X: list, Y: list, testFraction: int = 0.1)->tuple[list, list,
     trainX, trainY, testX, testY = X[testSize:], Y[testSize:], X[:testSize], Y[:testSize]
     return trainX, trainY, testX, testY
 
+
 def tecEvaluation(X: list, Y: list, tecWeights:list)->float:
     """
-    Given a list of input parameters X, the expected output Y (shaft horsepower measurements), and the linear true efficiency coefficient weights tecWeights,
+    Given a list of input parameters X, the expected output Y (shaft horsepower measurements),
     output the normalized root mean squared deviation of the estimate of the power calculations.
 
-    This function serves as the cost function for the particle swarm optimization.
+    This function serves as the objective function.
     """
     errorSum = 0
     yMax, yMin = max(Y), min(Y)
@@ -83,56 +85,6 @@ def tecEvaluation(X: list, Y: list, tecWeights:list)->float:
     NRMSD = math.sqrt(MSE) / (yMax - yMin)
     return round(NRMSD, 8)
 
-def calculateEfficiencyCoefficient(inputs: list, tecWeights:list):
-    """
-    Calculates the true efficiency coefficient by way of a linear equation using the provided weights.
-    len(inputs) = len(tecWeights) - 1
-    """
-    if len(inputs) != len(tecWeights) - 1:
-        raise Exception("trueEfficiencyCoefficient Dimension mismatch between input and tecWeights!")
-
-def isValidParticle(particle: list, coefficientInputMagnitudes: list):
-    """
-    Check if a particle coordinate is valid.
-    
-    Valid coordinates exist between the range of 0 and 1 for the maximum orders of magnitude input into each value 
-    """
-    return
-
-
-def generateParticle(coefficientInputMagnitudes: list):
-    """
-    Given a list of the input magnitudes, return a list of valid particle coordinates.
-    """
-    #particle = [random.uniform(0, )]
-    return
-
-def trueEfficiencyOptimization(X, Y, numParticles = 100, inertia = 0.5, phi_p = 2, phi_g = 2):
-    """
-    A function to optimize the trueEfficiencyCoefficient that modifies the ideal open-water effiency to get an accurate eta_o given our data.
-
-    Use a basic particle swarm optimization algorithm, with the goal of minimizing the error of the function.
-    
-    State Space: 5D space consisting of the parameters of length (10e2), beam (10e1), draft (10e0), displacement (10e4), and speed (10e2). 
-    Alternate parameters to explore: froude number (10e-1), block coefficient (10e-1), nabla (moulded displacement volume) (10e4)
-    
-    Restrictions:  
-    trueEfficiencyCoefficient cannot exceed 1, since it modifies an already ideal value for the open-water efficiency.
-    The state space for a parameter p is limited to 10e[1-log(avg(p))] as to adhere to the first restriction
-
-
-    Minimize the MSE of the predicted shp vs the actual shp with a linear regression
-    """
-    #contains the order of magnitude of each coefficient input. See the function description for more info.
-    coefficientInputMagnitudes = [0. ]
-    #randomized initialization 
-    particles = []
-    for i in range(numParticles):
-        particle = []
-        #random value for the random intercept
-        intercept = random.random()
-        #randomized initial length coefficient
-    return
 
 def main():
     X, Y = loadCSV()

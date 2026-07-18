@@ -1080,7 +1080,7 @@ def HoltropMennenPowerCalculation(length: float, beam: float, T: float, displace
     :type propKeelClearance: float, optional
     :param trueEfficiencyCoefficient: Correction coefficient applied to the ideal propeller efficiency, defaults to 0.7.
     :type trueEfficiencyCoefficient: float, optional
-    :returns: Required shaft power.
+    :returns: Required shaft power (kilowatts).
     :rtype: float
     """
     ####### INPUT VALUES ############
@@ -1201,23 +1201,7 @@ def main() -> None:
             shaftPower = HoltropMennenPowerCalculation(length, beam, draft, displacement, speed, cM = cM, cWP = cWP,
                                 numPropellers = numShafts, dProp = dProp,
                                 numBlades = numBlades, n = propSpeed, aBT = aBT)
-            #print(f"{name}: {round(shaftPower/1000)} kW")
-    print("Yamato Test")
-    name, length, beam, draft, displacement, speed, numShafts, numBlades = "Soviet 1936 Ultimate Battleship", 330, 39, 11.2, 80000, 13.375, 4, 5
-    shaftPower = HoltropMennenPowerCalculation(length, beam, draft, displacement, speed,
-                        numPropellers = numShafts, numBlades = numBlades)
-    print(cB_calcs(displacement, length, beam, draft))
-    print(f"{name}: {round(shaftPower/1000)} kW")
-    print(f"{name} Error Adjustment: {round(1.22 * shaftPower/1000)} kW")
-    cruisingSpeed = 8.23 #12 knots               
-    shaftPower = HoltropMennenPowerCalculation(length, beam, draft, displacement, cruisingSpeed,
-                        numPropellers = numShafts, numBlades = numBlades)
-    print(f"{name} Cruising Speed Error Adjustment: {round(1.22 * shaftPower/1000)} kW")
-
-    name, length, beam, draft, displacement, speed, numShafts, numBlades, dProp = "Kaiyo", 159.6, 21.9, 8.25, 16896.86, 13.11833, 2, 3, 3.9
-    shaftPower = HoltropMennenPowerCalculation(length, beam, draft, displacement, speed,
-                        numPropellers = numShafts, numBlades = numBlades, dProp=dProp)
-    print(f"{name} 25.5 knot: {shaftPower/1000} kW")
+            print(f"{name}: {round(shaftPower/1000)} kW")
 
 if __name__ == "__main__":
     main()
