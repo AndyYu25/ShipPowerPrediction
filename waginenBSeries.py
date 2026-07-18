@@ -82,7 +82,7 @@ class WaginenBSeries:
         deltaKQ = 0
         for row in self.torqueCorrectionCoefficients:
             a_i, b_i, c_i, d_i, e_i, f_i = row
-            deltaKQ += a_i * (J ** b_i) * ((p/d) ** c_i) * (AEA0 ** d_i) * (Z ** e_i) * (math.log10(reynolds - 0.301) ** f_i)
+            deltaKQ += a_i * (J ** b_i) * ((p/d) ** c_i) * (AEA0 ** d_i) * (Z ** e_i) * ((math.log10(reynolds) - 0.301) ** f_i)
         kQ = self.torqueCoefficient(d, Z, AEA0, p, J) 
         return kQ + deltaKQ
     def thrustCoefficientCorrected(self, d: float, Z: int, AEA0: float, p: float, J: float, reynolds: float)->float:
@@ -99,13 +99,59 @@ class WaginenBSeries:
         deltaKT = 0
         for row in self.thrustCorrectionCoefficients:
             a_i, b_i, c_i, d_i, e_i, f_i = row
-            deltaKT += a_i * (J ** b_i) * ((p/d) ** c_i) * (AEA0 ** d_i) * (Z ** e_i) * (math.log10(reynolds - 0.301) ** f_i)
+            deltaKT += a_i * (J ** b_i) * ((p/d) ** c_i) * (AEA0 ** d_i) * (Z ** e_i) * ((math.log10(reynolds) - 0.301) ** f_i)
         kT = self.torqueCoefficient(d, Z, AEA0, p, J) 
         return kT + deltaKT
 
+def main():
+    """
+    Test using ship example provided by Holtrop & Mennen 
+    """
+    from shipSpeedCalc import pitch_calcs, j_calcs, reynolds_calcs, deltaCD_calcs, tc_calcs, chordLength_calcs
 
-bSeries = WaginenBSeries()
-p = 0.9
-d = 1
-print(bSeries.thrustCoefficient(d, 4, 0.55, p, 1))
-print(bSeries.torqueCoefficient(d, 4, 0.55, p, 1))
+    bSeries = WaginenBSeries()
+    #print(bSeries.thrustRegressionCoefficients)
+    v = 12.8611 #velocity, 25 knots in m/s
+    w = 0.2584 # wake fraction
+    n = 1.6594 #propeller frequency (hertz)
+    p = pitch_calcs(v, w, n)
+    diameter = 8
+    print(p / diameter)
+    propBlades = 4
+    ae_ao = 0.7393
+    j = j_calcs(v, w, n, diameter)
+    print("J: ", j)
+    KV = 11.8987e-7 #kinematic viscoscity (m^2/s). Default value of 11.8987e-7 for water at 16 celsius
+    length = 205
+    #reynolds = reynolds_calcs(length, v, KV)
+    #reynolds number based on relative velocity at 0.7R
+    c_075 = chordLength_calcs(ae_ao, diameter, propBlades)
+    
+    #wake speed, v_a
+    v_a = v * (1 - w)
+    v_r = math.sqrt(v_a ** 2 + (0.7 * math.pi * n * diameter) ** 2)
+    c_r = diameter * 0.520 * ae_ao  #chord length estimation at 0.7R, 0.520 is X2 for 4 blades
+    reynolds = reynolds_calcs(c_r, v_r, KV)
+    print(reynolds)
+    print("K_T: ", bSeries.thrustCoefficient(diameter, propBlades, ae_ao, p, j))
+    print("K_Q: ", bSeries.torqueCoefficient(diameter, propBlades, ae_ao, p, j))
+    print("Corrected thrust & torque coefficients")
+    print(bSeries.thrustCoefficientCorrected(diameter, propBlades, ae_ao, p, j, reynolds))
+    print(bSeries.torqueCoefficientCorrected(diameter, propBlades, ae_ao, p, j, reynolds))
+
+    # Holtrop & Mennen correction:
+    k_p = 0.00003
+    tc = tc_calcs(propBlades, c_075, diameter)
+    deltaCD = deltaCD_calcs(tc, c_075, k_p)
+    #k_t_ship = bSeries.thrustCoefficientCorrected(diameter, propBlades, ae_ao, p, 0, reynolds) + deltaCD * 0.3 * p * c_075 * propBlades / diameter ** 2
+    #k_q_ship = bSeries.torqueCoefficientCorrected(diameter, propBlades, ae_ao, p, 0, reynolds) - deltaCD * 0.25 * c_075 * propBlades / diameter ** 2
+    k_t_ship = bSeries.thrustCoefficient(diameter, propBlades, ae_ao, p, j)
+    k_q_ship = bSeries.torqueCoefficient(diameter, propBlades, ae_ao, p, j)
+    print("k_t_ship: ", k_t_ship)
+    print("k_q_ship: ", k_q_ship)
+
+    eta_o = j * k_t_ship / (2 * math.pi * k_q_ship)
+    print(eta_o)
+
+if __name__ == "__main__":
+    main()

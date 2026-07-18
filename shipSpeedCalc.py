@@ -443,17 +443,17 @@ def chordLength_calcs(bladeAreaRatio, dProp, numBlades)->float:
     """
     return 2.073 * (bladeAreaRatio) * dProp / numBlades
 
-def tc_calcs(numBlades, c_075)->float:
+def tc_calcs(numBlades, c_075, dProp)->float:
     """
     returns the thickness-chord length ratio of the propeller
     """
-    return (0.0185 - 0.00125 * numBlades) / c_075
+    return (0.0185 - 0.00125 * numBlades) * dProp / c_075
 
 def deltaCD_calcs(tc_075, c_075, k_p)->float:
     """
     Calculates the different in drag coefficients of the hull profile section
     """
-    return (2 + 4 * tc_075) * (0.003605 - (1.89 + 1.62 * math.log(c_075 / k_p)) ** -2.5)
+    return (2.0 + 4.0 * tc_075) * (0.003605 - (1.89 + 1.62 * math.log(c_075 / k_p)) ** -2.5)
 
 def ktb_calcs(propThrust, rho, dProp, n)->float:
     """
@@ -475,7 +475,7 @@ def kt_calcs(K_T_B, delta_CD, pitch, c_075, numBlades, dProp)->float:
     return K_T_B + delta_CD * 0.3 * (pitch * c_075 * numBlades) / dProp ** 2
 
 
-def j_calcs(v, w, td, n, dProp)->float:
+def j_calcs(v, w, n, dProp)->float:
     """
     calculate the advance ratio of the propeller J
     J = advance velocity (different from the vessel velocity) divided by the propeller speed and diameter
@@ -621,7 +621,7 @@ def HoltropMennenPowerCalculation(length, beam, T, displacementMass, v,
     eta_R = etaR_calcs(numPropellers, bladeAreaRatio, cP, lcb, pitch, dProp)
     #chord length
     c_075 = chordLength_calcs(bladeAreaRatio, dProp, numBlades)
-    tc_075 = tc_calcs(numBlades, c_075)
+    tc_075 = tc_calcs(numBlades, c_075, dProp)
 
     #difference in drag coefficients of the profile section
     bseries = WaginenBSeries()
