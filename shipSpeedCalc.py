@@ -886,17 +886,19 @@ def chordLength_calcs(bladeAreaRatio: float, dProp: float, numBlades: int) -> fl
     """
     return 2.073 * (bladeAreaRatio) * dProp / numBlades
 
-def tc_calcs(numBlades: int, c_075: float) -> float:
+def tc_calcs(numBlades: int, c_075: float, dProp: float) -> float:
     """Return the thickness-chord length ratio of the propeller.
 
     :param numBlades: Number of blades per propeller.
     :type numBlades: int
     :param c_075: Chord length at 0.75 radius.
     :type c_075: float
+    :param dProp: propeller diameter.
+    :type dProp: float
     :returns: Thickness-chord length ratio.
     :rtype: float
     """
-    return (0.0185 - 0.00125 * numBlades) / c_075
+    return (0.0185 - 0.00125 * numBlades) * dProp / c_075
 
 def deltaCD_calcs(tc_075: float, c_075: float, k_p: float) -> float:
     """Calculate the difference in drag coefficients of the hull profile section.
@@ -1160,7 +1162,7 @@ def HoltropMennenPowerCalculation(length: float, beam: float, T: float, displace
     eta_R = etaR_calcs(numPropellers, bladeAreaRatio, cP, lcb, pitch, dProp)
     #chord length
     c_075 = chordLength_calcs(bladeAreaRatio, dProp, numBlades)
-    tc_075 = tc_calcs(numBlades, c_075)
+    tc_075 = tc_calcs(numBlades, c_075, dProp)
 
     #difference in drag coefficients of the profile section
     delta_CD = deltaCD_calcs(tc_075, c_075, k_p)
@@ -1170,7 +1172,6 @@ def HoltropMennenPowerCalculation(length: float, beam: float, T: float, displace
     cTH = cTH_calcs(K_T, J)
     eta_o = etao_calcs(cTH, trueEfficiencyCoefficient)
     shaftPower = shaftPowerCalcs(P_E, eta_R, eta_o, eta_S, td, w)
-    #shaftPower *= 1 / trueEfficiencyCoefficient
     return shaftPower
 
 def main() -> None:
