@@ -4,7 +4,7 @@ import csv
 
 ########## FRICTIONAL RESISTANCE (R_F) CALCS ###############
 
-def cB_calcs(displacementMass, length, beam, T):
+def cB_calcs(displacementMass: float, length: float, beam: float, T: float) -> float:
     """
     Return Block coefficient given mass and ship dimensions
     """
@@ -14,20 +14,20 @@ def cB_calcs(displacementMass, length, beam, T):
     return displacementMass / (length * beam * T)
 
 #block coefficient calcs
-def volumetricDisplacement(length, beam, T, cB):
+def volumetricDisplacement(length: float, beam: float, T: float, cB: float) -> float:
     """
     volumetric displacement calculation: mass / density
     """
     return length * beam * T * cB
 
 
-def cP_calcs(cB, cM):
+def cP_calcs(cB: float, cM: float) -> float:
     """
     Returns prismatic coefficient, calculated from block and midship section coefficient
     """
     return cB/cM
 
-def cF_calcs(length, v, KV = 11.8987e-7):
+def cF_calcs(length: float, v: float, KV: float = 11.8987e-7) -> float:
     """
     Calculates the coefficient of friction based on length, velocity, and kinematic viscosity of water
     """
@@ -35,7 +35,7 @@ def cF_calcs(length, v, KV = 11.8987e-7):
     reynolds = length * v / KV #10e6 is unit converions from mm^2 to m^2
     return 0.075 / (math.log10(reynolds) - 2) ** 2
 
-def c12_calcs(T, length):
+def c12_calcs(T: float, length: float) -> float:
     """
     returns the c12 coefficient given the draft and length
     """
@@ -47,13 +47,13 @@ def c12_calcs(T, length):
     if 0.02 >= ldRatio:
         return 0.479948
 
-def c13_calcs(cStern=0):
+def c13_calcs(cStern: float = 0) -> float:
     """
     Returns the regression-defined coefficient c13 calculated from the stern coefficient (default 0 assuming hogner stern)
     """
     return 1 + 0.003 * cStern
 
-def lR_calcs(length, cP, lcb):
+def lR_calcs(length: float, cP: float, lcb: float) -> float:
     """
     calculate lR, or run length given the length of the hull, prismatic coefficient, and longitudinal center of bouyancy
     """
@@ -71,7 +71,7 @@ def S_calcs(length: float, T: float, beam: float, cB: float, cM: float, cWP: flo
     """
     return length * (2 * T + beam) * math.sqrt(cM) * (0.453 + 0.4425 * cB - 0.2862 * cM - 0.003467 * beam / T + 0.3696 * cWP) + 2.38 * aBT / cB
 
-def rF_calcs(rho, cF, S, v)->float:
+def rF_calcs(rho: float, cF: float, S: float, v: float) -> float:
     """
     computes the total resistance due to friction on the ship hull
     """
@@ -82,7 +82,7 @@ def rF_calcs(rho, cF, S, v)->float:
 ########## APPENDANGE RESISTANCE (R_APP) CALCS ###############
 
 
-def rAPP_calcs(rho, v, sAPP, cF, flowAppendage = 1.5)->float:
+def rAPP_calcs(rho: float, v: float, sAPP: float, cF: float, flowAppendage: float = 1.5) -> float:
     """
     calculates resistance from appendages. Default of appendage flow is 1.5
     """
@@ -92,7 +92,7 @@ def rAPP_calcs(rho, v, sAPP, cF, flowAppendage = 1.5)->float:
 
 ########## Wave RESISTANCE (R_W) CALCS ###############
 
-def c7_calcs(beam, length)->float:
+def c7_calcs(beam: float, length: float) -> float:
     """
     Calculates the regression-computed coefficient c7, derived from beam and length
     """
@@ -103,31 +103,31 @@ def c7_calcs(beam, length)->float:
     elif 0.25 < beam / length:
         return 0.5 - 0.0625 * length / beam
 
-def c3_calcs(aBT, beam, TF, T, hB)->float:
+def c3_calcs(aBT: float, beam: float, TF: float, T: float, hB: float) -> float:
     """
     Calculates the regression-computed coefficient c3, which models the influence of a bulbous bow on wave resistance
     """
     return 0.56 * aBT ** 1.5 / (beam * T * (0.31 * math.sqrt(aBT) + TF - hB))
 
-def c2_calcs(c3, aBT)->float:
+def c2_calcs(c3: float, aBT: float) -> float:
 #c2 is wave resistance coefficient due to bulbous bow. defaults to 1 for non-bulbous bows
     if aBT == 0: return 1
     else: return math.exp(-1.89 * math.sqrt(c3))
 
-def c5_calcs(aT, beam, T, cM)->float:
+def c5_calcs(aT: float, beam: float, T: float, cM: float) -> float:
     """
     Calculates c5, the wave resistance coefficient due to transom sterns. defaults to 1 for non-transom sterns
     """
     if aT == 0: return 1
     else: return 1 - 0.8 * aT / (beam * T * cM)
 
-def nabla_calcs(cB, length, beam, T)->float:
+def nabla_calcs(cB: float, length: float, beam: float, T: float) -> float:
     """
     Calculates the moulded displacement volume
     """
     return cB  * length * beam * T
 
-def iE_calcs(length, beam, cWP, cP, lcb, lR, nabla)->float:
+def iE_calcs(length: float, beam: float, cWP: float, cP: float, lcb: float, lR: float, nabla: float) -> float:
     """
     calculates the value iE, the half angle of entrance (angle of the waterline at the bow with reference to the center plane)
     This value can be manually inputted based on the actual design, but estimated via regression analysis for user simplicity
@@ -135,39 +135,39 @@ def iE_calcs(length, beam, cWP, cP, lcb, lR, nabla)->float:
     return 1 + 89 * math.exp(-1 * (length / beam) ** 0.80856 * (1 - cWP) ** 0.30484 * (1 - cP - 0.0225 * lcb) ** 0.6367 
     * (lR / beam) ** 0.34574 * (100 * nabla / length ** 3) ** 0.16302)
 
-def c1_calcs(c7, T, beam, iE)->float:
+def c1_calcs(c7: float, T: float, beam: float, iE: float) -> float:
     """
     Calculates the regression-derived coefficient c1, based on c7, the draught and beam, and the half-angle of entrance
     """
     return 2223105 * c7 ** 3.78613 * (T / beam) ** 1.07961 * (90 - iE) ** -1.37565
 
-def froude_length_calcs(v, length, G = 9.81)->float:
+def froude_length_calcs(v: float, length: float, G: float = 9.81) -> float:
     """
     calculates the froude number given the velocity, gravity, and waterline length
     """
     return v / math.sqrt(length * G)
 
-def lamdba_calcs(length, beam, cP)->float:
+def lamdba_calcs(length: float, beam: float, cP: float) -> float:
     """
     calculates lambda, a regression-derived coefficient relating to wave resistance
     """
     if (length / beam) < 12: return 1.446 * cP - 0.03 * length / beam
     else: return 1.446 * cP - 0.36
 
-def c16_calcs(cP)->float:
+def c16_calcs(cP: float) -> float:
     """
     Calculates c16, a regression-derived coefficient based on the prismatic coefficient
     """
     if cP <= 0.80: return 8.07981 * cP - 13.8763 * cP ** 2 + 6.984388 * cP ** 3
     else: return 1.73014 - 0.7067
 
-def m1_calcs(length, T, nabla, beam, c16)->float:
+def m1_calcs(length: float, T: float, nabla: float, beam: float, c16: float) -> float:
     """
     calculates m1, a regression-derived parameter relating to wave resistances
     """
     return 0.0140407 * length / T - 1.75254 * nabla ** (1/3) / length - 4.79323 * beam / length - c16
 
-def c15_calcs(length, nabla)->float:
+def c15_calcs(length: float, nabla: float) -> float:
     """
     calculates c15, a regression-derived coefficient based on the ratio of the length cubed and nabla
     """
@@ -176,13 +176,13 @@ def c15_calcs(length, nabla)->float:
     elif length_nabla > 1727: return 0
     else: return -1.69385 + (length / nabla ** (1.3) - 8.0)/2.36
 
-def m2_calcs(c15, cP, Fn)->float:
+def m2_calcs(c15: float, cP: float, Fn: float) -> float:
     """
     calculates m2, a regression-derived parameter relating to wave resistances
     """
     return c15 * cP ** 2 * math.exp(-0.1 * Fn ** -2)
 
-def rW_calcs(c1, c2, c5, nabla, rho, G, m1, Fn, m2, lambda_w)->float:
+def rW_calcs(c1: float, c2: float, c5: float, nabla: float, rho: float, G: float, m1: float, Fn: float, m2: float, lambda_w: float) -> float:
     """
     calculates wave resistance based on previously calculated parameters and coefficients 
     """
@@ -191,7 +191,7 @@ def rW_calcs(c1, c2, c5, nabla, rho, G, m1, Fn, m2, lambda_w)->float:
 
 ########## BULBOUS BOW RESISTANCE (R_B) CALCS ###############
 
-def rB_calcs(aBT, hB, G, TF, v, rho)->float:
+def rB_calcs(aBT: float, hB: float, G: float, TF: float, v: float, rho: float) -> float:
     """
     calculates the resistance of a bulbous bow given the ship speed and dimensions of the bow
     """
@@ -209,7 +209,7 @@ def rB_calcs(aBT, hB, G, TF, v, rho)->float:
 
 ########## TRANSOM STERN RESISTANCE (R_TR) CALCS ###############
 
-def rTR_calcs(aT, v, G, beam, cWP, rho)->float:
+def rTR_calcs(aT: float, v: float, G: float, beam: float, cWP: float, rho: float) -> float:
     """
     calculates the resistance caused by a tramson stern based on the dimensions of the ship and the stern
     """
@@ -226,7 +226,7 @@ def rTR_calcs(aT, v, G, beam, cWP, rho)->float:
 
 ########## MODEL-SHIP CORRELATION RESISTANCE (R_A) CALCS ###############
 
-def cA_calcs(TF, length, cB, c2)->float:
+def cA_calcs(TF: float, length: float, cB: float, c2: float) -> float:
     """
     calculates the correlation allowance coefficient
     """
@@ -237,7 +237,7 @@ def cA_calcs(TF, length, cB, c2)->float:
     return 0.006 * (length + 100) ** -0.16 - 0.00205 + 0.003 * math.sqrt(length / 7.5) * cB ** 4 * c2 * (0.04 - c4)
 
 
-def rA_calcs(v, cA, rho, S)->float:
+def rA_calcs(v: float, cA: float, rho: float, S: float) -> float:
     """ 
     Calculates the model-ship correlation resistance
     """
@@ -247,7 +247,7 @@ def rA_calcs(v, cA, rho, S)->float:
 ########## TOTAL RESISTANCE CALCS ###############
 
 
-def rTotal_calcs(rF, formFactor, rAPP, rW, rB, rTR, rA)->float:
+def rTotal_calcs(rF: float, formFactor: float, rAPP: float, rW: float, rB: float, rTR: float, rA: float) -> float:
     """
     calculates total resistance force on the ship (as newtons) using previously calculated factors
     rTotal = cF * (formFactor) + rAPP + rW + rB + rTR + rA
@@ -255,7 +255,7 @@ def rTotal_calcs(rF, formFactor, rAPP, rW, rB, rTR, rA)->float:
     #total resistance (newtons)
     return rF * (formFactor) + rAPP + rW + rB + rTR + rA
 
-def externalPower_calcs(rTotal, v)->float:
+def externalPower_calcs(rTotal: float, v: float) -> float:
     """
     calculates the external/effective power applied to the ship as a whole, NOT the shaft power, which is the power applied to the shafts
     based on the formula that power equals force * velocity
@@ -263,7 +263,7 @@ def externalPower_calcs(rTotal, v)->float:
     return rTotal * v
 
 
-def cV_calcs(formFactor, cF, cA)->float:
+def cV_calcs(formFactor: float, cF: float, cA: float) -> float:
     """
     Calculates the viscious coefficient, which factors in the friction of the water on the ship as well as
     the influence of hull form on viscous pressure drag.
@@ -279,7 +279,7 @@ def cV_calcs(formFactor, cF, cA)->float:
 #so anything after that is assumed to have similar efficiency to a twin-screw arrangement
 #also assume aft draught (T_A)is the same as the amidships draught (T)
 
-def c8_calcs(beam, T, S, length, dProp)->float:
+def c8_calcs(beam: float, T: float, S: float, length: float, dProp: float) -> float:
     """
     calculate the propeller-variable coefficient c8
     """
@@ -290,7 +290,7 @@ def c8_calcs(beam, T, S, length, dProp)->float:
 
 
 
-def c9_calcs(c8)->float:
+def c9_calcs(c8: float) -> float:
     """
     calculate the propeller-variable coefficient c9
     """
@@ -300,7 +300,7 @@ def c9_calcs(c8)->float:
 
 
 
-def c10_calcs(beam, length)->float:
+def c10_calcs(beam: float, length: float) -> float:
     """
     calculate the regression-derived propeller-variable coefficient c10
     """
@@ -311,7 +311,7 @@ def c10_calcs(beam, length)->float:
 
 
 
-def c11_calcs(T, dProp)->float:
+def c11_calcs(T: float, dProp: float) -> float:
     """
     calculate the regression-derived propeller-variable coefficient c11 based on the draft (at the rear of the ship) and the propeller diameter
     """
@@ -322,7 +322,7 @@ def c11_calcs(T, dProp)->float:
 
 
 
-def cP1_calcs(cP, lcb)->float:
+def cP1_calcs(cP: float, lcb: float) -> float:
     """
     Calculate the regression-derived coefficient cP1, a prismatic coefficient variable accounting for longitudinal centre of bouyancy
     """
@@ -330,7 +330,7 @@ def cP1_calcs(cP, lcb)->float:
 
 
 
-def c20_calcs(cStern)->float:
+def c20_calcs(cStern: float) -> float:
     """
     Calculate the regression-derived coefficient c20 based on the stern coefficient
     """
@@ -338,7 +338,7 @@ def c20_calcs(cStern)->float:
 
 
 
-def c19_calcs(cB, cP, cM)->float:
+def c19_calcs(cB: float, cP: float, cM: float) -> float:
     """
     Calculate the regression-derived coefficient c19 based on the hull form coefficients of the ship
     """
@@ -349,7 +349,7 @@ def c19_calcs(cB, cP, cM)->float:
 
 
 
-def wt_calcs(c9, c20, cV, length, T, c11, cP1, beam, c19, dProp, cStern, cB, numPropellers, c10)->float:
+def wt_calcs(c9: float, c20: float, cV: float, length: float, T: float, c11: float, cP1: float, beam: float, c19: float, dProp: float, cStern: float, cB: float, numPropellers: int, c10: float) -> tuple[float, float]:
     """
     Calculates the wake fraction (w) and thrust deduction coefficients (t).
     """
@@ -372,7 +372,7 @@ def wt_calcs(c9, c20, cV, length, T, c11, cP1, beam, c19, dProp, cStern, cB, num
 
 ########## BLADE AREA RATIO (A_E/A_O) CALCS ###############
 
-def K_calcs(numPropellers)->float:
+def K_calcs(numPropellers: int) -> float:
     """
     K is a constant based on number of propellers. Only determined for single or double screw ships; unreliable for more than 2 screws
 
@@ -381,26 +381,20 @@ def K_calcs(numPropellers)->float:
     elif numPropellers > 1: return 0.1
     else: raise Exception("Ship cannot have less than 1 propeller!")
 
-
-
-def hShaft_calcs(T, propKeelClearance, dProp)->float:
+def hShaft_calcs(T: float, propKeelClearance: float, dProp: float) -> float:
     """
     returns the depth of the shaft centerline, calculated as draught minus prop radius + prop keel clearance (at the stern)
     """
     return T - (propKeelClearance + dProp / 2)
 
-
-
-
-
-def pitch_calcs(v, w, n)->float:
+def pitch_calcs(v: float, w: float, n: float) -> float:
     """
     calculates propeller pitch, or how far the propeller goes in one revolution
     formula: pitch velocity * wake field coefficient (to account for propeller slip) / rotational frequency
     """
     return v * (1 - w) / n
 
-def propThrust_calcs(rTotal, td)->float:
+def propThrust_calcs(rTotal: float, td: float) -> float:
     """
     returns propeller thrust the thrust generated by the propellers
     effective thrust = total resistance
@@ -411,7 +405,7 @@ def propThrust_calcs(rTotal, td)->float:
 
 
 
-def bladeAreaRatio_calcs(K, numBlades, propThrust, dProp, rho, G, hShaft)->float:
+def bladeAreaRatio_calcs(K: float, numBlades: int, propThrust: float, dProp: float, rho: float, G: float, hShaft: float) -> float:
     """
     Calculates the ratio of the area of the blades 
     original equation: bladeAreaRatio = K + (1.3 + 0.3 * Z) * thrust / (dProp ** 2 * (p_o + rho * G * h - p_v))
@@ -421,7 +415,7 @@ def bladeAreaRatio_calcs(K, numBlades, propThrust, dProp, rho, G, hShaft)->float
     return  K + (1.3 + 0.3 * numBlades) * propThrust / (dProp ** 2 * (99047 + rho * G * hShaft))
 
 
-def etaR_calcs(numPropellers, bladeAreaRatio, cP, lcb, pitch, dProp)->float:
+def etaR_calcs(numPropellers: int, bladeAreaRatio: float, cP: float, lcb: float, pitch: float, dProp: float) -> float:
     #calculate eta_R here since it is dependent on A_E/A_O for the case of a single screw ship
     if numPropellers == 1:
         return 0.9922 - 0.05908 * bladeAreaRatio + 0.07424 * (cP - 0.0225 * lcb)
@@ -430,25 +424,25 @@ def etaR_calcs(numPropellers, bladeAreaRatio, cP, lcb, pitch, dProp)->float:
 
 ########## OPEN WATER PROPELLER EFFICIENCY CALCS (eta_o) ###############
 
-def chordLength_calcs(bladeAreaRatio, dProp, numBlades)->float:
+def chordLength_calcs(bladeAreaRatio: float, dProp: float, numBlades: int) -> float:
     """
     calculate c_0.75, or the chord length of the propeller
     """
     return 2.073 * (bladeAreaRatio) * dProp / numBlades
 
-def tc_calcs(numBlades, c_075)->float:
+def tc_calcs(numBlades: int, c_075: float) -> float:
     """
     returns the thickness-chord length ratio of the propeller
     """
     return (0.0185 - 0.00125 * numBlades) / c_075
 
-def deltaCD_calcs(tc_075, c_075, k_p)->float:
+def deltaCD_calcs(tc_075: float, c_075: float, k_p: float) -> float:
     """
     Calculates the different in drag coefficients of the hull profile section
     """
     return (2 + 4 * tc_075) * (0.003605 - (1.89 + 1.62 * math.log(c_075 / k_p)) ** -2.5)
 
-def ktb_calcs(propThrust, rho, dProp, n)->float:
+def ktb_calcs(propThrust: float, rho: float, dProp: float, n: float) -> float:
     """
     Calculates the thrust coefficient of a model (K_T_B or K_TM) based on the ITTC 1978 specification formula.
 
@@ -461,14 +455,14 @@ def ktb_calcs(propThrust, rho, dProp, n)->float:
 
 
 
-def kt_calcs(K_T_B, delta_CD, pitch, c_075, numBlades, dProp)->float:
+def kt_calcs(K_T_B: float, delta_CD: float, pitch: float, c_075: float, numBlades: int, dProp: float) -> float:
     """
     calculates the ship thrust coefficient using the Holtrop-Mennen formulation
     """
     return K_T_B + delta_CD * 0.3 * (pitch * c_075 * numBlades) / dProp ** 2
 
 
-def j_calcs(v, w, td, n, dProp)->float:
+def j_calcs(v: float, w: float, td: float, n: float, dProp: float) -> float:
     """
     calculate the advance ratio of the propeller J
     """
@@ -481,14 +475,14 @@ def j_calcs(v, w, td, n, dProp)->float:
 #give up, can't figure way to derive torque
 #eta_o = J * K_T /(2 * math.pi * K_Q)
 
-def cTH_calcs(K_T, J)->float:
+def cTH_calcs(K_T: float, J: float) -> float:
     """
     calculates the thrust coefficient, using the formulas provided by ITTC 1978 proceedings
     """
     return (K_T / J ** 2) * 8 / math.pi
 
 
-def etao_calcs(cTH, trueEfficiencyCoefficient = 0.7)->float:
+def etao_calcs(cTH: float, trueEfficiencyCoefficient: float = 0.7) -> float:
     """
     calculates eta_o, the propeller efficiency. Use a textbook ideal propeller efficiency formula, which does overestimate propeller efficincy
     0.7 coefficient derived from fitting to the example ship provided by Holtrop & Mennen
@@ -502,17 +496,17 @@ def etao_calcs(cTH, trueEfficiencyCoefficient = 0.7)->float:
     return trueEfficiencyCoefficient * eta_o
 ########## TOTAL SHAFT POWER CALCS ###############
 
-def shaftPowerCalcs(P_E, eta_R, eta_o, eta_S, td, w)->float:
+def shaftPowerCalcs(P_E: float, eta_R: float, eta_o: float, eta_S: float, td: float, w: float) -> float:
     """
     Calculates the required shaft power given the external power and all the efficiency coefficients
     """
     return P_E / (eta_R * eta_o * eta_S * (1 - td)/(1 - w))
 
 
-def HoltropMennenPowerCalculation(length, beam, T, displacementMass, v,
-                                  lcb = 0, cM = 0.95, sAPP = 0, cWP = 0.7, aBT = 0,
-                                  hB = 4, aT = 0, numPropellers = 2, dProp = 3.5,
-                                  numBlades = 3, n = 3, propKeelClearance = 0.2, trueEfficiencyCoefficient = 0.7):
+def HoltropMennenPowerCalculation(length: float, beam: float, T: float, displacementMass: float, v: float,
+                                  lcb: float = 0, cM: float = 0.95, sAPP: float = 0, cWP: float = 0.7, aBT: float = 0,
+                                  hB: float = 4, aT: float = 0, numPropellers: int = 2, dProp: float = 3.5,
+                                  numBlades: int = 3, n: float = 3, propKeelClearance: float = 0.2, trueEfficiencyCoefficient: float = 0.7) -> float:
     """
     Full calculation of resistance and shaft power. length, beam, draft, displacement, and velocity are required, all other params are optional.
     All units are in metric
@@ -593,6 +587,7 @@ def HoltropMennenPowerCalculation(length, beam, T, displacementMass, v,
     cA = cA_calcs(TF, length, cB, c2)
     rA = rA_calcs(v, cA, rho, S)
     rTotal = rTotal_calcs(rF, formFactor, rAPP, rW, rB, rTR, rA)
+    #print(rTotal, rF, formFactor, rAPP, rW, rB, rTR, rA)
     #total resistance deviates 4% from Holthrop + Mennen's example (underestimation of resistance)
     P_E = externalPower_calcs(rTotal, v)
     #print(f"EHP: {round(P_E / 1000)} kW")
@@ -628,7 +623,7 @@ def HoltropMennenPowerCalculation(length, beam, T, displacementMass, v,
     #shaftPower *= 1 / trueEfficiencyCoefficient
     return shaftPower
 
-def main():
+def main() -> None:
     with open("HoltropMennenTest.csv", 'r') as csvfile:
         # creating a csv reader object
         csvreader = csv.reader(csvfile)
@@ -656,10 +651,23 @@ def main():
             shaftPower = HoltropMennenPowerCalculation(length, beam, draft, displacement, speed, cM = cM, cWP = cWP,
                                 numPropellers = numShafts, dProp = dProp,
                                 numBlades = numBlades, n = propSpeed, aBT = aBT)
-            print(f"{name}: {round(shaftPower/1000)} kW")
+            #print(f"{name}: {round(shaftPower/1000)} kW")
+    print("Yamato Test")
+    name, length, beam, draft, displacement, speed, numShafts, numBlades = "Soviet 1936 Ultimate Battleship", 330, 39, 11.2, 80000, 13.375, 4, 5
+    shaftPower = HoltropMennenPowerCalculation(length, beam, draft, displacement, speed,
+                        numPropellers = numShafts, numBlades = numBlades)
+    print(cB_calcs(displacement, length, beam, draft))
+    print(f"{name}: {round(shaftPower/1000)} kW")
+    print(f"{name} Error Adjustment: {round(1.22 * shaftPower/1000)} kW")
+    cruisingSpeed = 8.23 #12 knots               
+    shaftPower = HoltropMennenPowerCalculation(length, beam, draft, displacement, cruisingSpeed,
+                        numPropellers = numShafts, numBlades = numBlades)
+    print(f"{name} Cruising Speed Error Adjustment: {round(1.22 * shaftPower/1000)} kW")
 
-               
-
+    name, length, beam, draft, displacement, speed, numShafts, numBlades, dProp = "Kaiyo", 159.6, 21.9, 8.25, 16896.86, 13.11833, 2, 3, 3.9
+    shaftPower = HoltropMennenPowerCalculation(length, beam, draft, displacement, speed,
+                        numPropellers = numShafts, numBlades = numBlades, dProp=dProp)
+    print(f"{name} 25.5 knot: {shaftPower/1000} kW")
 
 if __name__ == "__main__":
     main()
