@@ -1,6 +1,5 @@
 import math
 import csv
-from waginenBSeries import WaginenBSeries
 
 
 ########## FRICTIONAL RESISTANCE (R_F) CALCS ###############
@@ -67,13 +66,8 @@ def cF_calcs(length: float, v: float, KV: float = 11.8987e-7) -> float:
     :returns: Coefficient of friction.
     :rtype: float
     """
-    return length * v / KV
-
-
-def cF_calcs(reynolds):
-    """
-    Calculates the coefficient of friction based on the reynolds number
-    """
+    #reynolds number calcs
+    reynolds = length * v / KV #10e6 is unit converions from mm^2 to m^2
     return 0.075 / (math.log10(reynolds) - 2) ** 2
 
 def c12_calcs(T: float, length: float) -> float:
@@ -454,12 +448,12 @@ def rB_calcs(aBT: float, hB: float, G: float, TF: float, v: float, rho: float) -
     :returns: Bulbous bow resistance, 0 if there is no bulbous bow.
     :rtype: float
     """
-
     #measure of emergence of the bow
     p_B = 0.56 * math.sqrt(aBT) / (TF - 1.5 * hB)
 
     #Froude Number based on immersion of the bow
     Fni = v / math.sqrt(G * (TF - hB - 0.25 * math.sqrt(aBT)) + 0.15 * v ** 2)
+
     #0 if no bulbous bow 
     if aBT == 0: return 0
     else: return 0.11 * math.exp(-3 * p_B ** -2) * Fni ** 3 * aBT ** 1.5 * rho * G / (1 + Fni ** 2)
@@ -866,8 +860,7 @@ def bladeAreaRatio_calcs(K: float, numBlades: int, propThrust: float, dProp: flo
     :returns: Blade area ratio.
     :rtype: float
     """
-    print(rho)
-    return K + (1.3 + 0.3 * numBlades) * propThrust / (dProp ** 2 * (99047 + rho * G * hShaft))
+    return  K + (1.3 + 0.3 * numBlades) * propThrust / (dProp ** 2 * (99047 + rho * G * hShaft))
 
 
 def etaR_calcs(numPropellers: int, bladeAreaRatio: float, cP: float, lcb: float, pitch: float, dProp: float) -> float:
@@ -919,7 +912,7 @@ def deltaCD_calcs(tc_075: float, c_075: float, k_p: float) -> float:
     :returns: Difference in drag coefficients.
     :rtype: float
     """
-    return (2.0 + 4.0 * tc_075) * (0.003605 - (1.89 + 1.62 * math.log(c_075 / k_p)) ** -2.5)
+    return (2 + 4 * tc_075) * (0.003605 - (1.89 + 1.62 * math.log(c_075 / k_p)) ** -2.5)
 
 def ktb_calcs(propThrust: float, rho: float, dProp: float, n: float) -> float:
     """Calculate the thrust coefficient of a model (K_T_B or K_TM).
@@ -981,10 +974,7 @@ def j_calcs(v: float, w: float, td: float, n: float, dProp: float) -> float:
     :returns: Advance ratio (J).
     :rtype: float
     """
-    #v_a: advance velocity
-    v_a = v - w * v
-    return v_a / (n * dProp)
-
+    return v * (1 - w * td) / (n * dProp)
 
 
 #can't figure out torque
@@ -1020,7 +1010,8 @@ def etao_calcs(cTH: float, trueEfficiencyCoefficient: float = 0.7) -> float:
     :returns: Propeller efficiency (eta_o).
     :rtype: float
     """
-    return (J / (2 * math.pi)) * (K_T / K_Q)
+    #ideal propeller efficiency / ideal eta_o calculation, is a drastic overestimation of eta_o:
+    eta_o = 2 / (1 + math.sqrt(1 + cTH))
 
     #multiply ideal propeller efficiency by 0.7 to reflect real life conditions
     #still results in optimistic measurements
@@ -1106,6 +1097,7 @@ def HoltropMennenPowerCalculation(length: float, beam: float, T: float, displace
     G = 9.81 #acceleration due to gravity (m/s^2)
     rho  = 1025  #density of fluid (salt water in this case) kg / m^3
     KV = 11.8987e-7 #kinematic viscoscity (m^2/s). Default value of 11.8987e-7 for water at 16 celsius
+
     ########## APPROXIMATED PARAMETERS ###############
     k_p = 0.00003 #propeller roughness (for 1980s props, may be higher with fouled or older propellers, but assume 0.00003 for simplicity)
     #eta_s is the sea efficincy coefficient, which accounts for sea currents, water quality, and fouling
@@ -1116,8 +1108,7 @@ def HoltropMennenPowerCalculation(length: float, beam: float, T: float, displace
     #wetted area of the hull
     cB = cB_calcs(displacementMass, length, beam, T)
     cP = cP_calcs(cB, cM) #prismatic coefficient calculation
-    reynolds = reynolds_calcs(length, v, KV)
-    cF = cF_calcs(reynolds) #cF is coefficient of friction
+    cF = cF_calcs(length, v, KV) #cF is coefficient of friction
     cStern = 0 # 10 for U-shaped section with hogner stern, 0 for normal section, -10 for v-shaped sections
     c12 = c12_calcs(T, length)
     c13 = c13_calcs(cStern)
