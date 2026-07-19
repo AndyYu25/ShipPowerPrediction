@@ -6,6 +6,8 @@ import random
 import math
 import pandas as pd
 from sklearn.model_selection import train_test_split
+import optuna
+from functools import partial
 
 def loadCSV(filename: str = "HoltropMennenTest.csv", testFraction: int = 0.1, random_state: int = 42)->tuple[pd.DataFrame, pd.DataFrame]:
     """
@@ -82,11 +84,33 @@ def shaftPowerError(X: pd.DataFrame, cM_default, cWP_default, dProp_default, n_d
     return round(mean_error, 8)
 
 
+def objective(trial: optuna.Trial, X: pd.DataFrame):
+    """
+    wrapper to include optuna parameter suggestions
+    """
+    cM_default = trial.suggest_float("cM_default", 0.0, 1.0) #coefficients exist between 0 and 1
+    cWP_default = trial.suggest_float("cWP_default", 0.0, 1.0)
+    dProp_default = trial.suggest_float("dProp_default", 2.0, 10.0) #propeller diameter (meters)
+    n_default = trial.suggest_float("n_default", 2.0, 10.0) #assume propeller spinning is between 120 rpm and 600 rpm'
+    aBT_default = trial.suggest_float("aBT_default", 0.0, 100.0) #guess aBT is within one order of magnitude of the Holtrop-Mennen example
+    sApp = trial.suggest_float("sApp", 0.0, 500.0) #guess sApp is within one OOM of Holtrop-Mennen example
+    flowAppendage = trial.suggest_float("flowAppendage", 1.0, 4.0) #appendage area is 1 + k_2, so must be at least 1, and highest k_2 value is 4.0
+    lcb = trial.suggest_float("lcb", -0.5, 0.5) #lcb is expressed as percentage of length relative to amidships, so must be between -0.5 and 0.5
+    hb = trial.suggest_float("hb", 0.0, 10.0) #hb is height above keel line, so should be between 0 and 10 meters
+    propKeelClearance = trial.suggest_float("propKeelClearance", 0.0, 10.0) #How many meters between the tip of a propeller at its lowest and the keel line
+    trueEfficiencyCoefficient = trial.suggest_float("trueEfficiencyCoefficient", 0.0, 1.0) #is a coefficient between 0 and 1
+
+    return shaftPowerError(X, cM_default, cWP_default, dProp_default, n_default, aBT_default, sApp, flowAppendage, lcb, hb, propKeelClearance,trueEfficiencyCoefficient)
+
 def main():
     train, test = loadCSV(testFraction=0)
     print(shaftPowerError(train, 0.95, 0.7, 3.5, 3, 0, 0, 1.5, 0, 4, 0.2, 0.7))
     #trainX, trainY, testX, testY = trainTestSplit(X, Y, testFraction = 0.1)
     #print(tecEvaluation(X, Y, [0.7, 0, 0, 0, 0, 0]))
+    study = optuna.create_study()
+    objective_df = partial(objective, X = train)
+    num_steps = 100
+    study.optimize(objective_df, n_trials = 100, show_progress_bar=True)
 
 if __name__ == "__main__":
     main()
