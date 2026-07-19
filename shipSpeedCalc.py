@@ -1175,7 +1175,6 @@ def HoltropMennenPowerCalculation(length: float, beam: float, T: float, displace
     tc_075 = tc_calcs(numBlades, c_075, dProp)
 
     #difference in drag coefficients of the profile section
-    bseries = WaginenBSeries()
     delta_CD = deltaCD_calcs(tc_075, c_075, k_p)
     K_T_B = ktb_calcs(propThrust, rho, dProp, n)
     K_T = kt_calcs(K_T_B, delta_CD, pitch, c_075, numBlades, dProp)
