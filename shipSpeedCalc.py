@@ -1043,7 +1043,7 @@ def shaftPowerCalcs(P_E: float, eta_R: float, eta_o: float, eta_S: float, td: fl
 def HoltropMennenPowerCalculation(length: float, beam: float, T: float, displacementMass: float, v: float,
                                   lcb: float = 0, cM: float = 0.95, sAPP: float = 0, cWP: float = 0.7, aBT: float = 0,
                                   hB: float = 4, aT: float = 0, numPropellers: int = 2, dProp: float = 3.5,
-                                  numBlades: int = 3, n: float = 3, propKeelClearance: float = 0.2, trueEfficiencyCoefficient: float = 0.7) -> float:
+                                  numBlades: int = 3, n: float = 3, propKeelClearance: float = 0.2, trueEfficiencyCoefficient: float = 0.7, flowAppendage = 1.5) -> float:
     """Full calculation of resistance and shaft power. All units are in metric.
 
     :param length: Waterline length of ship in meters.
@@ -1082,6 +1082,8 @@ def HoltropMennenPowerCalculation(length: float, beam: float, T: float, displace
     :type propKeelClearance: float, optional
     :param trueEfficiencyCoefficient: Correction coefficient applied to the ideal propeller efficiency, defaults to 0.7.
     :type trueEfficiencyCoefficient: float, optional
+    :param flowAppendage: weighted average of the appendage resistance factor of all appendages. See (Holthrop and Mennen 167) for how to calculate.
+    :type flowAppendage: float, optional
     :returns: Required shaft power (kilowatts).
     :rtype: float
     """
@@ -1101,7 +1103,6 @@ def HoltropMennenPowerCalculation(length: float, beam: float, T: float, displace
     #eta_s is the sea efficincy coefficient, which accounts for sea currents, water quality, and fouling
     eta_S = 0.99 #coefficient ideal conditions (completely calm water, 15 degrees saltwater, clean hull + propeller)
     cCrossSection = 0.9 #cross-section coefficient. 1 is a rectangle, 0.5 is a triangle. 0.9 default assuming u-shaped hull
-    flowAppendage = 1.5 #weighted average approximation of the appendage flow coefficient. See (Holthrop and Mennen 167) for a more accurate calculation
 
     #RESISTANCE CALCULATIONS
     #wetted area of the hull
