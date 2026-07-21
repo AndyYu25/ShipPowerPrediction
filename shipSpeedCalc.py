@@ -996,27 +996,26 @@ def cTH_calcs(K_T: float, J: float) -> float:
     return (K_T / J ** 2) * 8 / math.pi
 
 
-def etao_calcs(cTH: float, trueEfficiencyCoefficient: float = 0.7) -> float:
-    """Calculate eta_o, the propeller efficiency.
+def etao_calcs(K_T: float, K_Q: float, J: float) -> float:
+    """Calculate eta_o, the propeller efficiency given the thrust and torque coefficients.
+    
+    :param K_T: Thrust coefficient.
+    :type K_T: float
+    :param K_Q: Torque coefficient.
+    :type K_Q: float
+    :param J: Advance coefficient.
+    :type J: float
 
-    Uses a textbook ideal propeller efficiency formula, which does overestimate propeller
-    efficiency. The 0.7 coefficient is derived from fitting to the example ship provided
-    by Holtrop & Mennen.
-
-    :param cTH: Thrust coefficient.
-    :type cTH: float
-    :param trueEfficiencyCoefficient: Correction coefficient applied to the ideal efficiency, defaults to 0.7.
-    :type trueEfficiencyCoefficient: float, optional
     :returns: Propeller efficiency (eta_o).
     :rtype: float
     """
     #ideal propeller efficiency / ideal eta_o calculation, is a drastic overestimation of eta_o:
-    eta_o = 2 / (1 + math.sqrt(1 + cTH))
+    #eta_o = 2 / (1 + math.sqrt(1 + cTH))
 
     #multiply ideal propeller efficiency by 0.7 to reflect real life conditions
     #still results in optimistic measurements
     #eta_o *= trueEfficiencyCoefficient
-    return trueEfficiencyCoefficient * eta_o
+    return J * K_T / (2 * math.pi * K_Q) 
 ########## TOTAL SHAFT POWER CALCS ###############
 
 def shaftPowerCalcs(P_E: float, eta_R: float, eta_o: float, eta_S: float, td: float, w: float) -> float:
@@ -1043,7 +1042,7 @@ def shaftPowerCalcs(P_E: float, eta_R: float, eta_o: float, eta_S: float, td: fl
 def HoltropMennenPowerCalculation(length: float, beam: float, T: float, displacementMass: float, v: float,
                                   lcb: float = 0, cM: float = 0.95, sAPP: float = 0, cWP: float = 0.7, aBT: float = 0,
                                   hB: float = 4, aT: float = 0, numPropellers: int = 2, dProp: float = 3.5,
-                                  numBlades: int = 3, n: float = 3, propKeelClearance: float = 0.2, trueEfficiencyCoefficient: float = 0.7, flowAppendage = 1.5) -> float:
+                                  numBlades: int = 3, n: float = 3, propKeelClearance: float = 0.2, K_Q: float = 0.7, flowAppendage = 1.5) -> float:
     """Full calculation of resistance and shaft power. All units are in metric.
 
     :param length: Waterline length of ship in meters.
@@ -1206,7 +1205,10 @@ def main() -> None:
             print(f"{name}: {round(shaftPower/1000)} kW")
 
 if __name__ == "__main__":
-    main()
+    #main()
+    print(HoltropMennenPowerCalculation(241.55, 36, 9.33, 47870, 15.49, cM = 0.9705847326, cWP = 0.6600887785,
+                                numPropellers = 3, dProp = 4.7,
+                                numBlades = 3, n = 4.5, aBT = 0, lcb = -0.06241139963924306, trueEfficiencyCoefficient=0.756951204075692 ))
 
 #sources: overall calculation (Holthrop and Mennen 1978): https://repository.tudelft.nl/islandora/object/uuid:ee370fed-4b4f-4a70-af77-e14c3e692fd4/datastream/OBJ/download
 #coefficient of friction + reynolds number calculation: https://repository.tudelft.nl/islandora/object/uuid%3A16d77473-7043-4099-a8c6-bf58f555e2e7
