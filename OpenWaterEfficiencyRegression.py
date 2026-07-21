@@ -2,8 +2,7 @@
 from shipSpeedCalc import HoltropMennenPowerCalculation
 import csv
 from typing import Union,TypeVar
-import random
-import math
+import json
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import optuna
@@ -112,6 +111,8 @@ def main():
     num_steps = 200
     study.optimize(objective_df, n_trials = num_steps, show_progress_bar=True)
     print(optuna.importance.get_param_importances(study))
+    with open("bestParams.json", 'w', encoding='utf-8') as f:
+        json.dump(study.best_params, f)
 
 if __name__ == "__main__":
     main()
